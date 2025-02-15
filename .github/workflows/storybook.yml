@@ -3,7 +3,7 @@ name: Deploy Storybook
 on:
   push:
     branches:
-      - '**'  # matches any branch
+      - main  # only run on main branch
 
 # Add these permissions
 permissions:
@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   build-and-deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
