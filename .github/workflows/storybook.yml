@@ -45,6 +45,13 @@ jobs:
           ls -la node_modules/.bin
           ls -la node_modules/storybook
 
+      # Debug step to check node_modules
+      - name: Check node_modules
+        run: |
+          ls -la node_modules
+          ls -la node_modules/.bin
+          ls -la node_modules/storybook
+
       - name: Build Storybook
         run: npm run build-storybook
 
