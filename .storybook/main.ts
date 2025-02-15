@@ -22,7 +22,7 @@ const config: StorybookConfig = {
     config.plugins = await withoutVitePlugins(config.plugins, ['vite:dts']);
 
     return config;
-  }
+  },
 };
 
 export default config;
