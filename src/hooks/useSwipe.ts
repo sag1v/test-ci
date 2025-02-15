@@ -16,25 +16,39 @@ export const useSwipe = ({
   threshold = 50,
 }: SwipeConfig) => {
   const [startX, setStartX] = useState<number | null>(null);
+  const [isSwiping, setIsSwiping] = useState(false);
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent | React.MouseEvent) => {
-      if (!enabled) return;
-      if (e.type === 'mousedown' && !enableMouse) return;
+      if (!enabled) {
+        return;
+      }
+      if (e.type === 'mousedown' && !enableMouse) {
+        return;
+      }
 
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       setStartX(clientX);
+      setIsSwiping(true);
     },
     [enabled, enableMouse]
   );
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent | React.MouseEvent) => {
-      if (!enabled || startX === null) return;
-      if (e.type === 'mousemove' && !enableMouse) return;
+      if (!enabled || startX === null) {
+        return;
+      }
+      if (e.type === 'mousemove' && !enableMouse) {
+        return;
+      }
 
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const diff = startX - clientX;
+
+      if (isSwiping) {
+        return;
+      }
 
       if (Math.abs(diff) > threshold) {
         if (diff > 0) {
@@ -43,13 +57,23 @@ export const useSwipe = ({
           onSwipeRight();
         }
         setStartX(null);
+        setIsSwiping(false);
       }
     },
-    [enabled, enableMouse, onSwipeLeft, onSwipeRight, startX, threshold]
+    [
+      enabled,
+      enableMouse,
+      onSwipeLeft,
+      onSwipeRight,
+      startX,
+      threshold,
+      isSwiping,
+    ]
   );
 
   const handleTouchEnd = useCallback(() => {
     setStartX(null);
+    setIsSwiping(false);
   }, []);
 
   return {

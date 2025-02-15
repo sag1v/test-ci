@@ -27,8 +27,11 @@ describe('Carousel Component', () => {
   });
 
   it('handles no children', () => {
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-    // @ts-ignore - Testing runtime behavior
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {
+      // Empty implementation to silence the warning
+    });
+
+    // @ts-expect-error - Testing invalid prop type for runtime behavior check
     const { container } = render(<Carousel />);
     expect(container.firstChild).toBeNull();
     consoleSpy.mockRestore();
@@ -76,7 +79,7 @@ describe('Carousel Component', () => {
     const onNext = jest.fn();
     const onPrev = jest.fn();
     const user = userEvent.setup();
-    
+
     render(
       <Carousel infinite onNext={onNext} onPrev={onPrev}>
         {createSlides(3)}
@@ -172,26 +175,20 @@ describe('Responsive behavior', () => {
 
     triggerResize = (width: number) => {
       const callback = mockResizeObserver.mock.calls[0][0];
-      
-      callback([{
-        target: { 
-          classList: { contains: (name: string) => name === styles.root } 
-        },
-        contentRect: { width, height: 100 }
-      }]);
 
-      callback([{
-        target: { 
-          classList: { contains: (name: string) => name === styles.slide },
-          firstElementChild: { getBoundingClientRect: () => ({ height: 100 }) }
-        },
-        contentRect: { width, height: 100 }
-      }]);
+      callback([
+        {
+          target: {
+            classList: { contains: (name: string) => name === styles.root },
+          },
+          contentRect: { width, height: 100 },
+        } as ResizeObserverEntry,
+      ]);
     };
 
-    // @ts-ignore
+    // Mock ResizeObserver
     global.ResizeObserver = class ResizeObserver {
-      constructor(callback: any) {
+      constructor(callback: ResizeObserverCallback) {
         mockResizeObserver(callback);
       }
       observe() {}
@@ -202,12 +199,12 @@ describe('Responsive behavior', () => {
 
   it('uses default props when no responsive config provided', async () => {
     render(<Carousel itemsToShow={2}>{createSlides(5)}</Carousel>);
-    
+
     await act(async () => {
       triggerResize(1000);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     });
-    
+
     expect(screen.getAllByText(/Slide/)).toHaveLength(3);
   });
 
@@ -217,7 +214,7 @@ describe('Responsive behavior', () => {
         responsive={{
           300: { itemsToShow: 1 },
           800: { itemsToShow: 2 },
-          1200: { itemsToShow: 4 }
+          1200: { itemsToShow: 4 },
         }}
         infinite
       >
@@ -227,7 +224,7 @@ describe('Responsive behavior', () => {
 
     await act(async () => {
       triggerResize(1300);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     });
     expect(screen.getAllByText(/Slide/)).toHaveLength(6); // 1 prev + 4 visible + 1 next
   });
@@ -237,7 +234,7 @@ describe('Responsive behavior', () => {
       <Carousel
         itemsToShow={1}
         responsive={{
-          800: { itemsToShow: 2 }
+          800: { itemsToShow: 2 },
         }}
       >
         {createSlides(4)}
@@ -246,7 +243,7 @@ describe('Responsive behavior', () => {
 
     await act(async () => {
       triggerResize(500);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     });
     expect(screen.getAllByText(/Slide/)).toHaveLength(2);
   });

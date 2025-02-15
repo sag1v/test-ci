@@ -9,7 +9,9 @@ export const useResizeObserver = (
   const [currentBreakPoint, setCurrentBreakPoint] = useState<number>(0);
 
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current) {
+      return;
+    }
 
     const observer = new ResizeObserver((entries) => {
       const width = entries[0].contentRect.width;

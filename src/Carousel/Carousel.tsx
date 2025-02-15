@@ -38,46 +38,108 @@ export const Carousel: React.FC<CarouselProps> = ({
   responsive,
   ...defaultProps
 }) => {
-  if (!children) {
-    console.warn('Carousel: children must be provided');
-    return null;
-  }
-
+  // All hooks at the top
   const [state, setState] = useState<CarouselState>({
     currentIndex: defaultProps.initialActiveIndex || 0,
     trackOffset: 0,
     isAnimating: false,
     direction: null,
   });
-  const totalItems = React.Children.count(children);
-  const allItems = React.Children.toArray(children);
   const rootRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const [slideWidth, setSlideWidth] = useState(0);
   const [slideHeight, setSlideHeight] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [activeBreakpoint, setActiveBreakpoint] = useState<number | null>(null);
+  const [isRTL] = useState(defaultProps.isRTL || false);
 
-  // Get active props based on container width
+  // Calculate these before hooks that depend on them
+  const safeChildren = children || [];
+  const totalItems = React.Children.count(safeChildren);
+  const allItems = React.Children.toArray(safeChildren);
+
   const activeProps = useMemo(
     () => getResponsiveProps(defaultProps, responsive, containerWidth),
     [defaultProps, responsive, containerWidth]
   );
 
-  // Use activeProps directly in the component
-  const {
-    itemsToShow = 1,
-    itemsToMove = 1,
-    infinite = false,
-    enableAutoPlay = false,
-    autoPlaySpeed = 3000,
-    isRTL = false,
-  } = activeProps;
+  const { itemsToShow = 1, itemsToMove = 1, infinite = false } = activeProps;
 
-  // Single effect to measure dimensions
+  const getDirectionalOffset = useCallback(
+    (offset: number) => (isRTL ? -offset : offset),
+    [isRTL]
+  );
+
+  const handleNext = useCallback(() => {
+    if (state.isAnimating) {
+      return;
+    }
+    if (
+      !infinite &&
+      (isRTL
+        ? state.currentIndex === 0
+        : state.currentIndex >= totalItems - itemsToShow)
+    ) {
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      direction: 'next',
+      isAnimating: true,
+      trackOffset: getDirectionalOffset(-slideWidth * itemsToMove),
+    }));
+    defaultProps.onNext?.();
+  }, [
+    state.isAnimating,
+    state.currentIndex,
+    slideWidth,
+    itemsToMove,
+    infinite,
+    totalItems,
+    itemsToShow,
+    defaultProps,
+    getDirectionalOffset,
+    isRTL,
+  ]);
+
+  const handlePrev = useCallback(() => {
+    if (state.isAnimating) {
+      return;
+    }
+    if (
+      !infinite &&
+      (isRTL
+        ? state.currentIndex >= totalItems - itemsToShow
+        : state.currentIndex === 0)
+    ) {
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      direction: 'prev',
+      isAnimating: true,
+      trackOffset: getDirectionalOffset(slideWidth * itemsToMove),
+    }));
+    defaultProps.onPrev?.();
+  }, [
+    state.isAnimating,
+    state.currentIndex,
+    slideWidth,
+    itemsToMove,
+    infinite,
+    totalItems,
+    itemsToShow,
+    defaultProps,
+    getDirectionalOffset,
+    isRTL,
+  ]);
+
+  // All other hooks
   useEffect(() => {
-    if (!rootRef.current || !slideRef.current) return;
-
+    if (!rootRef.current || !slideRef.current) {
+      return;
+    }
     const resizeObserver = new ResizeObserver((entries) => {
       entries.forEach((entry) => {
         const target = entry.target as HTMLElement;
@@ -123,73 +185,6 @@ export const Carousel: React.FC<CarouselProps> = ({
     allItems,
   ]);
 
-  const getDirectionalOffset = useCallback(
-    (offset: number) => {
-      return isRTL ? -offset : offset;
-    },
-    [isRTL]
-  );
-
-  const handleNext = useCallback(() => {
-    if (state.isAnimating) return;
-    if (
-      !infinite &&
-      (isRTL
-        ? state.currentIndex === 0
-        : state.currentIndex >= totalItems - itemsToShow)
-    )
-      return;
-
-    setState((prev) => ({
-      ...prev,
-      direction: 'next',
-      isAnimating: true,
-      trackOffset: getDirectionalOffset(-slideWidth * itemsToMove),
-    }));
-    defaultProps.onNext?.();
-  }, [
-    state.isAnimating,
-    state.currentIndex,
-    slideWidth,
-    itemsToMove,
-    infinite,
-    totalItems,
-    itemsToShow,
-    defaultProps.onNext,
-    getDirectionalOffset,
-    isRTL,
-  ]);
-
-  const handlePrev = useCallback(() => {
-    if (state.isAnimating) return;
-    if (
-      !infinite &&
-      (isRTL
-        ? state.currentIndex >= totalItems - itemsToShow // RTL: stop at end
-        : state.currentIndex === 0) // LTR: stop at start
-    )
-      return;
-
-    setState((prev) => ({
-      ...prev,
-      direction: 'prev',
-      isAnimating: true,
-      trackOffset: getDirectionalOffset(slideWidth * itemsToMove),
-    }));
-    defaultProps.onPrev?.();
-  }, [
-    state.isAnimating,
-    state.currentIndex,
-    slideWidth,
-    itemsToMove,
-    infinite,
-    defaultProps.onPrev,
-    getDirectionalOffset,
-    totalItems,
-    itemsToShow,
-    isRTL,
-  ]);
-
   const handleTransitionEnd = useCallback(() => {
     setState((prev) => {
       let newIndex;
@@ -225,6 +220,12 @@ export const Carousel: React.FC<CarouselProps> = ({
     animationOffset: state.trackOffset,
     isRTL,
   });
+
+  // Now do the validation check after all hooks
+  if (!children) {
+    console.warn('Carousel component requires children');
+    return null;
+  }
 
   return (
     <div ref={rootRef} className={styles.root} dir={isRTL ? 'rtl' : 'ltr'}>

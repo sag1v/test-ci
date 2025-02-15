@@ -8,7 +8,9 @@ export const useAutoPlay = (
   const timerRef = useRef<NodeJS.Timeout>();
 
   const startAutoPlay = useCallback(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
     timerRef.current = setInterval(onNext, interval);
   }, [enabled, interval, onNext]);
 
