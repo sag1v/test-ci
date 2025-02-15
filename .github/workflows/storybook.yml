@@ -1,15 +1,13 @@
 name: Deploy Storybook
 
 on:
-  pull_request:
-    types: [closed]
+  # Run on any push to any branch
+  push:
     branches:
-      - main
+      - '**'  # matches any branch
 
 jobs:
   build-and-deploy:
-    # Only run if PR was merged (not just closed)
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
