@@ -16,7 +16,16 @@ const config: StorybookConfig = {
     autodocs: true,
   },
   viteFinal: (config) => {
-    config.plugins = [...(config.plugins || []), vanillaExtractPlugin()];
+    // Remove any existing vite-plugin-dts instances
+    config.plugins = config.plugins?.filter(plugin => 
+      plugin && !(typeof plugin === 'object' && 
+        'name' in plugin && 
+        plugin.name === 'vite-plugin-dts')
+    ) || [];
+    
+    // Add vanilla-extract plugin
+    config.plugins?.push(vanillaExtractPlugin());
+    
     return config;
   },
 };

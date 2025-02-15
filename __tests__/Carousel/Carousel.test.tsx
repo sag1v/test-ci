@@ -65,8 +65,8 @@ describe('Carousel Component', () => {
   it('disables arrows at boundaries when infinite scroll is off', () => {
     render(<Carousel infinite={false}>{createSlides(3)}</Carousel>);
 
-    const prevButton = screen.getByRole('button', { name: '→' });
-    const nextButton = screen.getByRole('button', { name: '←' });
+    const prevButton = screen.getByRole('button', { name: '←' });
+    const nextButton = screen.getByRole('button', { name: '→' });
 
     expect(prevButton).toBeDisabled();
     expect(nextButton).not.toBeDisabled();
@@ -83,8 +83,8 @@ describe('Carousel Component', () => {
       </Carousel>
     );
 
-    const nextButton = screen.getByRole('button', { name: '←' });
-    const prevButton = screen.getByRole('button', { name: '→' });
+    const nextButton = screen.getByRole('button', { name: '→' });
+    const prevButton = screen.getByRole('button', { name: '←' });
     const track = screen.getByText('Slide 1').parentElement!;
 
     // Click next and verify

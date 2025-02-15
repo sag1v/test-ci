@@ -234,11 +234,11 @@ export const Carousel: React.FC<CarouselProps> = ({
         disabled={
           !infinite &&
           (isRTL
-            ? state.currentIndex >= totalItems - itemsToShow // RTL: disable when at end
+            ? state.currentIndex >= totalItems - itemsToShow
             : state.currentIndex === 0)
-        } // LTR: disable when at start
+        }
       >
-        {isRTL ? '←' : '→'}
+        ←
       </button>
 
       <div
@@ -273,11 +273,11 @@ export const Carousel: React.FC<CarouselProps> = ({
         disabled={
           !infinite &&
           (isRTL
-            ? state.currentIndex === 0 // RTL: disable when at start
+            ? state.currentIndex === 0
             : state.currentIndex >= totalItems - itemsToShow)
-        } // LTR: disable when at end
+        }
       >
-        {isRTL ? '→' : '←'}
+        →
       </button>
     </div>
   );
