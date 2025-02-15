@@ -1,5 +1,6 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin';
+import { withoutVitePlugins } from '@storybook/builder-vite';
 
 const config: StorybookConfig = {
   framework: '@storybook/react-vite',
@@ -15,8 +16,11 @@ const config: StorybookConfig = {
   docs: {
     autodocs: true,
   },
-  viteFinal: (config) => {
-    config.plugins = [...(config.plugins || []), vanillaExtractPlugin()];
+  async viteFinal(config) {
+    // Remove any existing vite-plugin-dts instances
+    // https://github.com/qmhc/vite-plugin-dts/issues/275
+    config.plugins = await withoutVitePlugins(config.plugins, ['vite:dts']);
+
     return config;
   },
 };

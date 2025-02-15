@@ -12,6 +12,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx"]
+  "include": ["src/**/*", "__tests__/**/*", "src/test/testing-library.d.ts"],
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx"],
+  "types": ["node", "jest", "@testing-library/jest-dom"]
 }

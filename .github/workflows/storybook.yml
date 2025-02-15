@@ -1,15 +1,19 @@
 name: Deploy Storybook
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
-      - main
+      - main # only run on main branch
+
+# Add these permissions
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
-    # Only run if PR was merged (not just closed)
-    if: github.event.pull_request.merged == true
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -18,7 +22,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          npm: '10.2.4'
           cache: 'npm'
 
       # Cache node_modules
@@ -33,7 +36,14 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --verbose || true
+
+      # Debug step to check node_modules
+      - name: Check node_modules
+        run: |
+          ls -la node_modules
+          ls -la node_modules/.bin
+          ls -la node_modules/storybook
 
       - name: Build Storybook
         run: npm run build-storybook
