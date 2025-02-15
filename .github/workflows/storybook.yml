@@ -33,13 +33,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: |
-          npm -v
-          node -v
-          npm ci --verbose
-        env:
-          CI: true
-          DEBUG: '*'
+        run: npm ci
 
       - name: Build Storybook
         run: npm run build-storybook
