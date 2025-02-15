@@ -1,0 +1,21 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Carousel Component handles empty children 1`] = `
+<div
+  dir="ltr"
+>
+  <button
+    disabled=""
+  >
+    →
+  </button>
+  <div
+    style="transform: translate3d(0px, 0, 0); transition: none; width: auto; height: auto;"
+  />
+  <button
+    disabled=""
+  >
+    ←
+  </button>
+</div>
+`;
