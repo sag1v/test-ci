@@ -3,7 +3,7 @@ name: Tests & Quality Checks
 on:
   push:
     branches:
-      - '**'  # runs on all branches
+      - '**' # runs on all branches
 
 jobs:
   test-and-lint:
@@ -37,4 +37,4 @@ jobs:
         run: npm run lint
 
       - name: Check formatting
-        run: npm run format:check 
+        run: npm run format:check

@@ -3,7 +3,7 @@ name: Deploy Storybook
 on:
   push:
     branches:
-      - main  # only run on main branch
+      - main # only run on main branch
 
 # Add these permissions
 permissions:

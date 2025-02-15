@@ -8,7 +8,7 @@ module.exports = {
     '\\.css$': 'identity-obj-proxy',
   },
   transform: {
-    '^.+\\.(t|j)sx?$': ['ts-jest', { useESM: true }]
+    '^.+\\.(t|j)sx?$': ['ts-jest', { useESM: true }],
   },
-  extensionsToTreatAsEsm: ['.ts', '.tsx']
-}; 
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+};

@@ -19,12 +19,10 @@ const config: StorybookConfig = {
   async viteFinal(config) {
     // Remove any existing vite-plugin-dts instances
     // https://github.com/qmhc/vite-plugin-dts/issues/275
-    config.plugins = await withoutVitePlugins(config.plugins, [
-      'vite:dts',
-    ]);
-  
+    config.plugins = await withoutVitePlugins(config.plugins, ['vite:dts']);
+
     return config;
-  }
+  },
 };
 
 export default config;

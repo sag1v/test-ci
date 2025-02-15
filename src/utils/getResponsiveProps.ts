@@ -12,17 +12,17 @@ export const getResponsiveProps = (
   const breakpoints = Object.keys(responsive)
     .map(Number)
     .sort((a, b) => b - a);
-  
+
   const activeBreakpoint = breakpoints.find(
     (breakpoint) => containerWidth >= breakpoint
   );
-  
+
   if (!activeBreakpoint) {
     return defaultProps;
   }
 
   return {
     ...defaultProps,
-    ...responsive[activeBreakpoint]
+    ...responsive[activeBreakpoint],
   };
 };
