@@ -1,13 +1,15 @@
 name: Deploy Storybook
 
 on:
-  # Run on any push to any branch
-  push:
+  pull_request:
+    types: [closed]
     branches:
-      - '**'  # matches any branch
+      - main
 
 jobs:
   build-and-deploy:
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,13 +33,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: |
-          npm -v
-          node -v
-          npm ci --verbose
-        env:
-          CI: true
-          DEBUG: '*'
+        run: npm ci
 
       - name: Build Storybook
         run: npm run build-storybook
