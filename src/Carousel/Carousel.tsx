@@ -10,6 +10,7 @@ import { getItemsToRender } from '../utils/getItemsToRender';
 import { getTrackPosition } from '../utils/getTrackPosition';
 import { getResponsiveProps } from '../utils/getResponsiveProps';
 import { CarouselResponsiveProps } from '../types';
+import { useAutoPlay } from '../hooks/useAutoPlay';
 
 export interface CarouselProps {
   children: React.ReactNode;
@@ -62,7 +63,13 @@ export const Carousel: React.FC<CarouselProps> = ({
     [defaultProps, responsive, containerWidth]
   );
 
-  const { itemsToShow = 1, itemsToMove = 1, infinite = false } = activeProps;
+  const {
+    itemsToShow = 1,
+    itemsToMove = 1,
+    infinite = false,
+    enableAutoPlay = false,
+    autoPlaySpeed = 3000,
+  } = activeProps;
 
   const getDirectionalOffset = useCallback(
     (offset: number) => (isRTL ? -offset : offset),
@@ -101,6 +108,26 @@ export const Carousel: React.FC<CarouselProps> = ({
     getDirectionalOffset,
     isRTL,
   ]);
+
+  // Initialize autoplay
+  const { startAutoPlay, stopAutoPlay } = useAutoPlay(
+    enableAutoPlay,
+    autoPlaySpeed,
+    handleNext
+  );
+
+  // Add mouse event handlers to pause autoplay on hover
+  const handleMouseEnter = useCallback(() => {
+    if (enableAutoPlay) {
+      stopAutoPlay();
+    }
+  }, [enableAutoPlay, stopAutoPlay]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (enableAutoPlay) {
+      startAutoPlay();
+    }
+  }, [enableAutoPlay, startAutoPlay]);
 
   const handlePrev = useCallback(() => {
     if (state.isAnimating) {
@@ -200,6 +227,11 @@ export const Carousel: React.FC<CarouselProps> = ({
             : (prev.currentIndex - itemsToMove + totalItems) % totalItems;
       }
 
+      // Call onChange callback with the new index
+      if (defaultProps.onChange && newIndex !== prev.currentIndex) {
+        defaultProps.onChange(newIndex);
+      }
+
       return {
         currentIndex: newIndex,
         trackOffset: 0,
@@ -207,7 +239,7 @@ export const Carousel: React.FC<CarouselProps> = ({
         direction: null,
       };
     });
-  }, [itemsToMove, totalItems, isRTL]);
+  }, [itemsToMove, totalItems, isRTL, defaultProps]);
 
   const trackPosition = getTrackPosition({
     currentIndex: state.currentIndex,
@@ -228,7 +260,13 @@ export const Carousel: React.FC<CarouselProps> = ({
   }
 
   return (
-    <div ref={rootRef} className={styles.root} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div
+      ref={rootRef}
+      className={styles.root}
+      dir={isRTL ? 'rtl' : 'ltr'}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <button
         onClick={handlePrev}
         className={styles.prevArrow}

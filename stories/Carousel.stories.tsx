@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { fn } from '@storybook/test';
-import { Carousel } from '../src/Carousel/Carousel';
+import { Carousel, CarouselProps } from '../src/Carousel/Carousel';
 import './Carousel.stories.css';
 
 const meta: Meta<typeof Carousel> = {
@@ -37,7 +37,7 @@ const generateColor = (index: number) => {
 
 export const Default: Story = {
   args: {
-    children: Array.from({ length: 25 }, (_, i) => (
+    children: Array.from({ length: 12 }, (_, i) => (
       <Slide key={i} color={generateColor(i)}>
         <h2>Slide {i + 1}</h2>
         <p>Generated at: {new Date().toISOString()}</p>
@@ -133,5 +133,79 @@ export const ResizableContainer: Story = {
   ),
   args: {
     ...ResponsiveCarousel.args,
+  },
+};
+
+export const AutoPlayCarousel: Story = {
+  args: {
+    ...Default.args,
+    enableAutoPlay: true,
+    autoPlaySpeed: 3000,
+    infinite: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Carousel with auto-play enabled, advancing every 3 seconds',
+      },
+    },
+  },
+};
+
+export const InitialActiveIndex: Story = {
+  args: {
+    ...Default.args,
+    initialActiveIndex: 5,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Carousel starting at slide 6 (index 5) instead of the first slide',
+      },
+    },
+  },
+};
+
+// Create a proper React component for the WithOnChangeCallback story
+const OnChangeExample: React.FC<CarouselProps> = (props) => {
+  const [currentSlide, setCurrentSlide] = React.useState(0);
+
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: '20px',
+          padding: '10px',
+          backgroundColor: '#f0f0f0',
+          borderRadius: '4px',
+        }}
+      >
+        <strong>Current Slide:</strong> {currentSlide + 1}
+      </div>
+      <Carousel
+        {...props}
+        onChange={(index) => {
+          setCurrentSlide(index);
+          props.onChange?.(index);
+        }}
+      />
+    </div>
+  );
+};
+
+export const WithOnChangeCallback: Story = {
+  render: (args) => <OnChangeExample {...args} />,
+  args: {
+    ...Default.args,
+    onChange: fn(),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Demonstrates the onChange callback that fires when the active slide changes',
+      },
+    },
   },
 };
