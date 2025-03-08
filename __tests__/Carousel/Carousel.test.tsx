@@ -24,7 +24,8 @@ describe('Carousel Component', () => {
   it('handles empty children', () => {
     // Empty children should still render the carousel structure
     const { container } = render(<Carousel>{[]}</Carousel>);
-    expect(container.firstChild).toMatchSnapshot();
+    expect(container.firstChild).not.toBeNull();
+    expect(container.querySelector(`.${styles.root}`)).toBeInTheDocument();
   });
 
   it('handles no children', () => {

@@ -15,21 +15,27 @@ export const frame = style({
   flex: '1 1 auto',
   overflow: 'hidden', // Hide overflow within the frame
   width: '100%',
-  height: '100%',
+  minHeight: '1px',
+  display: 'flex',
 });
 
 export const track = style({
   display: 'flex',
   position: 'relative',
   width: '100%',
-  height: '100%',
+  height: '100%', // Ensure track takes full height
   willChange: 'transform',
+});
+
+// Vertical track style
+export const trackVertical = style({
+  flexDirection: 'column', // Stack slides vertically
 });
 
 export const slide = style({
   flex: '0 0 auto',
   width: '100%',
-  height: '100%',
+  boxSizing: 'border-box',
 });
 
 const arrowBase = style({

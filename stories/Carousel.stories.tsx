@@ -209,3 +209,63 @@ export const WithOnChangeCallback: Story = {
     },
   },
 };
+
+export const VerticalCarousel: Story = {
+  args: {
+    verticalMode: true,
+    infinite: true,
+    itemsToShow: 2,
+    itemsToMove: 1,
+    children: Array.from({ length: 8 }, (_, i) => (
+      <Slide key={i} color={generateColor(i)}>
+        <h2>Slide {i + 1}</h2>
+        <p>Vertical scrolling example</p>
+      </Slide>
+    )),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Carousel in vertical mode, showing multiple slides at a time with vertical alignment',
+      },
+    },
+  },
+};
+
+export const ResponsiveVerticalCarousel: Story = {
+  args: {
+    responsive: {
+      300: {
+        itemsToShow: 1,
+        itemsToMove: 1,
+        verticalMode: true,
+        infinite: true,
+      },
+      800: {
+        itemsToShow: 2,
+        itemsToMove: 1,
+        verticalMode: true,
+        infinite: true,
+      },
+      1200: {
+        itemsToShow: 3,
+        verticalMode: true,
+      },
+    },
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide key={i} color={generateColor(i)}>
+        <h2>Slide {i + 1}</h2>
+        <p>Resize container to see responsive vertical behavior</p>
+      </Slide>
+    )),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Demonstrates responsive behavior in vertical mode with multiple slides visible',
+      },
+    },
+  },
+};

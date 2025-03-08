@@ -25,6 +25,7 @@ export interface CarouselProps {
   onPrev?: () => void;
   isRTL?: boolean;
   responsive?: Record<number, CarouselResponsiveProps>;
+  verticalMode?: boolean;
 }
 
 interface CarouselState {
@@ -48,8 +49,9 @@ export const Carousel: React.FC<CarouselProps> = ({
   });
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
-  const slideRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [slideWidth, setSlideWidth] = useState(0);
+  const [slideHeight, setSlideHeight] = useState(0);
   const [rootWidth, setRootWidth] = useState(0);
   const [isRTL] = useState(defaultProps.isRTL || false);
 
@@ -63,145 +65,18 @@ export const Carousel: React.FC<CarouselProps> = ({
     [defaultProps, responsive, rootWidth]
   );
 
+  // Extract props with responsive values
   const {
+    infinite = false,
     itemsToShow = 1,
     itemsToMove = 1,
-    infinite = false,
     enableAutoPlay = false,
     autoPlaySpeed = 3000,
+    verticalMode = false,
   } = activeProps;
 
-  const getDirectionalOffset = useCallback(
-    (offset: number) => (isRTL ? -offset : offset),
-    [isRTL]
-  );
-
-  const handleNext = useCallback(() => {
-    if (state.isAnimating) {
-      return;
-    }
-    if (
-      !infinite &&
-      (isRTL
-        ? state.currentIndex === 0
-        : state.currentIndex >= totalItems - itemsToShow)
-    ) {
-      return;
-    }
-
-    setState((prev) => ({
-      ...prev,
-      direction: 'next',
-      isAnimating: true,
-      trackOffset: getDirectionalOffset(-slideWidth * itemsToMove),
-    }));
-    defaultProps.onNext?.();
-  }, [
-    state.isAnimating,
-    state.currentIndex,
-    slideWidth,
-    itemsToMove,
-    infinite,
-    totalItems,
-    itemsToShow,
-    defaultProps,
-    getDirectionalOffset,
-    isRTL,
-  ]);
-
-  // Initialize autoplay
-  const { startAutoPlay, stopAutoPlay } = useAutoPlay(
-    enableAutoPlay,
-    autoPlaySpeed,
-    handleNext
-  );
-
-  // Add mouse event handlers to pause autoplay on hover
-  const handleMouseEnter = useCallback(() => {
-    if (enableAutoPlay) {
-      stopAutoPlay();
-    }
-  }, [enableAutoPlay, stopAutoPlay]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (enableAutoPlay) {
-      startAutoPlay();
-    }
-  }, [enableAutoPlay, startAutoPlay]);
-
-  const handlePrev = useCallback(() => {
-    if (state.isAnimating) {
-      return;
-    }
-    if (
-      !infinite &&
-      (isRTL
-        ? state.currentIndex >= totalItems - itemsToShow
-        : state.currentIndex === 0)
-    ) {
-      return;
-    }
-
-    setState((prev) => ({
-      ...prev,
-      direction: 'prev',
-      isAnimating: true,
-      trackOffset: getDirectionalOffset(slideWidth * itemsToMove),
-    }));
-    defaultProps.onPrev?.();
-  }, [
-    state.isAnimating,
-    state.currentIndex,
-    slideWidth,
-    itemsToMove,
-    infinite,
-    totalItems,
-    itemsToShow,
-    defaultProps,
-    getDirectionalOffset,
-    isRTL,
-  ]);
-
-  // Effect for calculating sizes
-  useEffect(() => {
-    if (!rootRef.current || !frameRef.current) {
-      return;
-    }
-
-    const calculateSizes = () => {
-      if (!frameRef.current || !rootRef.current) {
-        return;
-      }
-
-      // Measure root element for responsive features
-      const rootRect = rootRef.current.getBoundingClientRect();
-      setRootWidth(rootRect.width);
-
-      // Use frame dimensions for slide sizing
-      const frameRect = frameRef.current.getBoundingClientRect();
-      const frameWidth = frameRect.width;
-
-      // Calculate slide width based on frame width and items to show
-      const calculatedSlideWidth = Math.floor(frameWidth / itemsToShow);
-      setSlideWidth(calculatedSlideWidth);
-    };
-
-    // Initial calculation
-    calculateSizes();
-
-    // Set up ResizeObserver
-    const resizeObserver = new ResizeObserver(() => {
-      calculateSizes();
-    });
-
-    resizeObserver.observe(frameRef.current);
-    resizeObserver.observe(rootRef.current); // Also observe root for responsive features
-
-    // Clean up
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [itemsToShow]);
+  // Extract callback props
+  const { onNext, onPrev } = defaultProps;
 
   const itemsToRender = useMemo(() => {
     const itemsToRenderIndexes = getItemsToRender({
@@ -225,19 +100,236 @@ export const Carousel: React.FC<CarouselProps> = ({
     allItems,
   ]);
 
+  // Handle next button click
+  const handleNext = useCallback(() => {
+    if (state.isAnimating) {
+      return;
+    }
+
+    if (onNext) {
+      onNext();
+    }
+
+    // Set the track offset for smooth transition
+    const offset = verticalMode ? -slideHeight : -slideWidth;
+
+    setState((prevState) => ({
+      ...prevState,
+      trackOffset: offset * itemsToMove,
+      isAnimating: true,
+      direction: 'next',
+    }));
+  }, [
+    state.isAnimating,
+    onNext,
+    itemsToMove,
+    slideWidth,
+    slideHeight,
+    verticalMode,
+  ]);
+
+  // Handle previous button click
+  const handlePrev = useCallback(() => {
+    if (state.isAnimating) {
+      return;
+    }
+
+    if (onPrev) {
+      onPrev();
+    }
+
+    // Set the track offset for smooth transition
+    const offset = verticalMode ? slideHeight : slideWidth;
+
+    setState((prevState) => ({
+      ...prevState,
+      trackOffset: offset * itemsToMove,
+      isAnimating: true,
+      direction: 'prev',
+    }));
+  }, [
+    state.isAnimating,
+    onPrev,
+    itemsToMove,
+    slideWidth,
+    slideHeight,
+    verticalMode,
+  ]);
+
+  // Initialize autoplay
+  const { startAutoPlay, stopAutoPlay } = useAutoPlay(
+    enableAutoPlay,
+    autoPlaySpeed,
+    handleNext
+  );
+
+  // Add mouse event handlers to pause autoplay on hover
+  const handleMouseEnter = useCallback(() => {
+    if (enableAutoPlay) {
+      stopAutoPlay();
+    }
+  }, [enableAutoPlay, stopAutoPlay]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (enableAutoPlay) {
+      startAutoPlay();
+    }
+  }, [enableAutoPlay, startAutoPlay]);
+
+  // Effect for calculating sizes
+  useEffect(() => {
+    if (!rootRef.current || !frameRef.current) {
+      return;
+    }
+
+    // One-time calculation of slide dimensions
+    const calculateSizes = (entries?: ResizeObserverEntry[]) => {
+      if (!frameRef.current || !rootRef.current) {
+        return;
+      }
+
+      let rootRect: DOMRect | { width: number; height: number };
+      let frameRect: DOMRect | { width: number; height: number };
+
+      if (entries && entries.length > 0) {
+        // Use entries from ResizeObserver if available
+        const rootEntry = entries.find(
+          (entry) => entry.target === rootRef.current
+        );
+        const frameEntry = entries.find(
+          (entry) => entry.target === frameRef.current
+        );
+
+        if (rootEntry) {
+          rootRect = {
+            width: rootEntry.contentRect.width,
+            height: rootEntry.contentRect.height,
+          };
+        } else {
+          rootRect = rootRef.current.getBoundingClientRect();
+        }
+
+        if (frameEntry) {
+          frameRect = {
+            width: frameEntry.contentRect.width,
+            height: frameEntry.contentRect.height,
+          };
+        } else {
+          frameRect = frameRef.current.getBoundingClientRect();
+        }
+      } else {
+        // Initial calculation - use getBoundingClientRect
+        rootRect = rootRef.current.getBoundingClientRect();
+        frameRect = frameRef.current.getBoundingClientRect();
+      }
+
+      // Update root width for responsive features
+      setRootWidth(rootRect.width);
+
+      // For horizontal mode, calculate slide width based on frame width and itemsToShow
+      if (!verticalMode && frameRect.width > 0 && itemsToShow > 0) {
+        const calculatedSlideWidth = Math.floor(frameRect.width / itemsToShow);
+        setSlideWidth(calculatedSlideWidth > 0 ? calculatedSlideWidth : 0);
+      }
+
+      // For vertical mode, measure the track to determine slide height
+      if (verticalMode && trackRef.current) {
+        // Use itemsToRender.length for consistency with other parts of the code
+        const renderedItemsCount = itemsToRender.length;
+
+        if (renderedItemsCount === 0) {
+          return; // No items to measure
+        }
+
+        // First, temporarily make the track visible with all items to measure
+        const originalStyle = trackRef.current.style.cssText;
+
+        // Remove transform and transition to get natural height
+        trackRef.current.style.cssText =
+          'position: absolute; transform: none; transition: none; visibility: visible; height: auto;';
+
+        // Measure the track's natural height
+        const trackRect = trackRef.current.getBoundingClientRect();
+        const totalTrackHeight = trackRect.height;
+
+        // Restore original style
+        trackRef.current.style.cssText = originalStyle;
+
+        if (totalTrackHeight > 0 && renderedItemsCount > 0) {
+          // Calculate slide height by dividing track height by number of rendered items
+          const calculatedSlideHeight = Math.ceil(
+            totalTrackHeight / renderedItemsCount
+          );
+
+          // Set slide height
+          setSlideHeight(calculatedSlideHeight);
+
+          // Set frame height to show exactly itemsToShow slides
+          if (frameRef.current && itemsToShow > 0) {
+            frameRef.current.style.height = `${calculatedSlideHeight * itemsToShow}px`;
+          }
+        }
+      }
+    };
+
+    // Initial calculation
+    calculateSizes();
+
+    // Set up ResizeObserver for width changes only
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Only recalculate if width changes, not height
+      const rootEntry = entries.find(
+        (entry) => entry.target === rootRef.current
+      );
+
+      if (
+        rootEntry?.contentRect.width !== rootWidth ||
+        (entries.some((entry) => entry.target === frameRef.current) &&
+          !verticalMode)
+      ) {
+        calculateSizes(entries);
+      }
+    });
+
+    resizeObserver.observe(rootRef.current);
+    resizeObserver.observe(frameRef.current);
+
+    // Clean up
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [itemsToShow, verticalMode, rootWidth, itemsToRender.length]);
+
+  // Handle transition end event
   const handleTransitionEnd = useCallback(() => {
+    if (!state.isAnimating) {
+      return;
+    }
+
     setState((prev) => {
-      let newIndex;
-      if (isRTL) {
-        newIndex =
-          prev.direction === 'next'
+      // Calculate the new index based on the direction of movement
+      let newIndex = prev.currentIndex;
+
+      if (prev.direction === 'next') {
+        newIndex = isRTL
+          ? Math.max(0, prev.currentIndex - itemsToMove)
+          : Math.min(totalItems - itemsToShow, prev.currentIndex + itemsToMove);
+
+        if (infinite) {
+          newIndex = isRTL
             ? (prev.currentIndex - itemsToMove + totalItems) % totalItems
             : (prev.currentIndex + itemsToMove) % totalItems;
-      } else {
-        newIndex =
-          prev.direction === 'next'
+        }
+      } else if (prev.direction === 'prev') {
+        newIndex = isRTL
+          ? Math.min(totalItems - itemsToShow, prev.currentIndex + itemsToMove)
+          : Math.max(0, prev.currentIndex - itemsToMove);
+
+        if (infinite) {
+          newIndex = isRTL
             ? (prev.currentIndex + itemsToMove) % totalItems
             : (prev.currentIndex - itemsToMove + totalItems) % totalItems;
+        }
       }
 
       // Call onChange callback with the new index
@@ -252,7 +344,15 @@ export const Carousel: React.FC<CarouselProps> = ({
         direction: null,
       };
     });
-  }, [itemsToMove, totalItems, isRTL, defaultProps]);
+  }, [
+    itemsToMove,
+    totalItems,
+    isRTL,
+    defaultProps,
+    infinite,
+    itemsToShow,
+    state.isAnimating,
+  ]);
 
   const trackPosition = getTrackPosition({
     currentIndex: state.currentIndex,
@@ -260,11 +360,20 @@ export const Carousel: React.FC<CarouselProps> = ({
     itemsToShow,
     itemsToMove,
     slideWidth,
+    slideHeight,
     itemsToRenderCount: itemsToRender.length,
     circular: infinite,
     animationOffset: state.trackOffset,
     isRTL,
+    isVertical: verticalMode,
   });
+
+  // Initialize autoplay
+  useEffect(() => {
+    if (enableAutoPlay) {
+      startAutoPlay();
+    }
+  }, [enableAutoPlay, startAutoPlay]);
 
   // Now do the validation check after all hooks
   if (!children) {
@@ -279,8 +388,11 @@ export const Carousel: React.FC<CarouselProps> = ({
       dir={isRTL ? 'rtl' : 'ltr'}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      style={{
+        height: '100%', // Ensure root takes full height
+      }}
     >
-      {/* Previous button - now outside the frame */}
+      {/* Previous button - always on the side */}
       <button
         onClick={handlePrev}
         className={styles.prevArrow}
@@ -288,56 +400,63 @@ export const Carousel: React.FC<CarouselProps> = ({
           !infinite &&
           (isRTL
             ? state.currentIndex >= totalItems - itemsToShow
-            : state.currentIndex === 0)
+            : state.currentIndex <= 0)
         }
-        aria-label="Previous slide"
+        aria-label={verticalMode ? 'Previous slide (up)' : 'Previous slide'}
       >
-        ←
+        {verticalMode ? '↑' : '←'}
       </button>
 
       {/* Frame container - wraps the track */}
       <div className={styles.frame} ref={frameRef}>
         <div
-          className={styles.track}
+          ref={trackRef}
+          className={`${styles.track} ${verticalMode ? styles.trackVertical : ''}`}
           style={{
-            transform: `translate3d(${trackPosition}px, 0, 0)`,
+            transform: verticalMode
+              ? `translateY(${trackPosition}px)`
+              : `translateX(${trackPosition}px)`,
             transition: state.isAnimating
               ? 'transform 0.3s ease-in-out'
               : 'none',
-            width: slideWidth
-              ? `${slideWidth * itemsToRender.length}px`
-              : 'auto',
+            width: '100%',
           }}
           onTransitionEnd={handleTransitionEnd}
         >
-          {itemsToRender.map(({ index, content }, renderIndex) => (
-            <div
-              key={`slide-${index}-${renderIndex}`}
-              ref={renderIndex === 0 ? slideRef : undefined}
-              className={styles.slide}
-              style={{
-                width: `${slideWidth}px`,
-              }}
-            >
-              {content}
-            </div>
-          ))}
+          {itemsToRender.map(({ index, content }, renderIndex) => {
+            // Only apply fixed height in vertical mode if we have a valid calculated height
+            const slideStyle = verticalMode
+              ? slideHeight > 0
+                ? { height: `${slideHeight}px` }
+                : { flex: `1 0 ${100 / itemsToShow}%` } // Fallback to percentage-based height
+              : { width: slideWidth > 0 ? `${slideWidth}px` : 'auto' };
+
+            return (
+              <div
+                key={`slide-${index}-${renderIndex}`}
+                className={`${styles.slide}`}
+                style={slideStyle}
+              >
+                {content}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Next button - now outside the frame */}
+      {/* Next button - always on the side */}
       <button
         onClick={handleNext}
         className={styles.nextArrow}
         disabled={
           !infinite &&
           (isRTL
-            ? state.currentIndex === 0
+            ? state.currentIndex <= 0
             : state.currentIndex >= totalItems - itemsToShow)
         }
-        aria-label="Next slide"
+        aria-label={verticalMode ? 'Next slide (down)' : 'Next slide'}
       >
-        →
+        {verticalMode ? '↓' : '→'}
       </button>
     </div>
   );
