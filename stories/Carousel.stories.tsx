@@ -24,7 +24,7 @@ const Slide = ({
   color: string;
   children: React.ReactNode;
 }) => (
-  <div className="slide-content" style={{ backgroundColor: color }}>
+  <div className="example-slide-content" style={{ backgroundColor: color }}>
     {children}
   </div>
 );
@@ -59,9 +59,9 @@ export const MultipleSlides: Story = {
     itemsToShow: 3,
     children: Array.from({ length: 25 }, (_, i) => (
       <Slide key={i} color={generateColor(i)}>
-        <div className="slide-content">
+        <div className="example-slide-content">
           <h2>Slide {i + 1}</h2>
-          <div className="slide-details">
+          <div className="example-slide-details">
             <p>Slide ID: {Math.random().toString(36).substring(7)}</p>
             <p>Generated at: {new Date().toISOString()}</p>
           </div>
