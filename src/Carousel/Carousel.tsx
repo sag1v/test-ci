@@ -47,10 +47,10 @@ export const Carousel: React.FC<CarouselProps> = ({
     direction: null,
   });
   const rootRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
   const slideRef = useRef<HTMLDivElement>(null);
   const [slideWidth, setSlideWidth] = useState(0);
-  const [slideHeight, setSlideHeight] = useState(0);
-  const [containerWidth, setContainerWidth] = useState(0);
+  const [rootWidth, setRootWidth] = useState(0);
   const [isRTL] = useState(defaultProps.isRTL || false);
 
   // Calculate these before hooks that depend on them
@@ -59,8 +59,8 @@ export const Carousel: React.FC<CarouselProps> = ({
   const allItems = React.Children.toArray(safeChildren);
 
   const activeProps = useMemo(
-    () => getResponsiveProps(defaultProps, responsive, containerWidth),
-    [defaultProps, responsive, containerWidth]
+    () => getResponsiveProps(defaultProps, responsive, rootWidth),
+    [defaultProps, responsive, rootWidth]
   );
 
   const {
@@ -162,33 +162,46 @@ export const Carousel: React.FC<CarouselProps> = ({
     isRTL,
   ]);
 
-  // All other hooks
+  // Effect for calculating sizes
   useEffect(() => {
-    if (!rootRef.current || !slideRef.current) {
+    if (!rootRef.current || !frameRef.current) {
       return;
     }
-    const resizeObserver = new ResizeObserver((entries) => {
-      entries.forEach((entry) => {
-        const target = entry.target as HTMLElement;
-        if (target.classList.contains(styles.root)) {
-          setSlideWidth(entry.contentRect.width / itemsToShow);
-          setContainerWidth(entry.contentRect.width);
-        }
-        if (target.classList.contains(styles.slide)) {
-          const firstSlideContent = target.firstElementChild;
-          if (firstSlideContent) {
-            setSlideHeight(
-              Math.ceil(firstSlideContent.getBoundingClientRect().height)
-            );
-          }
-        }
-      });
+
+    const calculateSizes = () => {
+      if (!frameRef.current || !rootRef.current) {
+        return;
+      }
+
+      // Measure root element for responsive features
+      const rootRect = rootRef.current.getBoundingClientRect();
+      setRootWidth(rootRect.width);
+
+      // Use frame dimensions for slide sizing
+      const frameRect = frameRef.current.getBoundingClientRect();
+      const frameWidth = frameRect.width;
+
+      // Calculate slide width based on frame width and items to show
+      const calculatedSlideWidth = Math.floor(frameWidth / itemsToShow);
+      setSlideWidth(calculatedSlideWidth);
+    };
+
+    // Initial calculation
+    calculateSizes();
+
+    // Set up ResizeObserver
+    const resizeObserver = new ResizeObserver(() => {
+      calculateSizes();
     });
 
-    resizeObserver.observe(rootRef.current);
-    resizeObserver.observe(slideRef.current);
-    return () => resizeObserver.disconnect();
-  }, [itemsToShow, containerWidth]);
+    resizeObserver.observe(frameRef.current);
+    resizeObserver.observe(rootRef.current); // Also observe root for responsive features
+
+    // Clean up
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [itemsToShow]);
 
   const itemsToRender = useMemo(() => {
     const itemsToRenderIndexes = getItemsToRender({
@@ -267,6 +280,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      {/* Previous button - now outside the frame */}
       <button
         onClick={handlePrev}
         className={styles.prevArrow}
@@ -276,36 +290,42 @@ export const Carousel: React.FC<CarouselProps> = ({
             ? state.currentIndex >= totalItems - itemsToShow
             : state.currentIndex === 0)
         }
+        aria-label="Previous slide"
       >
         ←
       </button>
 
-      <div
-        className={styles.track}
-        style={{
-          transform: `translate3d(${trackPosition}px, 0, 0)`,
-          transition: state.isAnimating ? 'transform 0.3s ease-in-out' : 'none',
-          width: slideWidth
-            ? `${slideWidth * (itemsToShow + 2 * itemsToMove)}px`
-            : 'auto',
-          height: slideHeight ? `${slideHeight}px` : 'auto',
-        }}
-        onTransitionEnd={handleTransitionEnd}
-      >
-        {itemsToRender.map(({ index, content }, renderIndex) => (
-          <div
-            key={`slide-${index}-${renderIndex}`}
-            ref={renderIndex === 0 ? slideRef : undefined}
-            className={styles.slide}
-            style={{
-              width: `${slideWidth}px`,
-            }}
-          >
-            {content}
-          </div>
-        ))}
+      {/* Frame container - wraps the track */}
+      <div className={styles.frame} ref={frameRef}>
+        <div
+          className={styles.track}
+          style={{
+            transform: `translate3d(${trackPosition}px, 0, 0)`,
+            transition: state.isAnimating
+              ? 'transform 0.3s ease-in-out'
+              : 'none',
+            width: slideWidth
+              ? `${slideWidth * itemsToRender.length}px`
+              : 'auto',
+          }}
+          onTransitionEnd={handleTransitionEnd}
+        >
+          {itemsToRender.map(({ index, content }, renderIndex) => (
+            <div
+              key={`slide-${index}-${renderIndex}`}
+              ref={renderIndex === 0 ? slideRef : undefined}
+              className={styles.slide}
+              style={{
+                width: `${slideWidth}px`,
+              }}
+            >
+              {content}
+            </div>
+          ))}
+        </div>
       </div>
 
+      {/* Next button - now outside the frame */}
       <button
         onClick={handleNext}
         className={styles.nextArrow}
@@ -315,6 +335,7 @@ export const Carousel: React.FC<CarouselProps> = ({
             ? state.currentIndex === 0
             : state.currentIndex >= totalItems - itemsToShow)
         }
+        aria-label="Next slide"
       >
         →
       </button>

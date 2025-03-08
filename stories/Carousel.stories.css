@@ -4,9 +4,8 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 20px;
   width: 100%;
-  padding: 1rem;
+  min-height: 175px;
 }
 
 .example-slide-content h2 {
