@@ -5,14 +5,18 @@ exports[`Carousel Component handles empty children 1`] = `
   dir="ltr"
 >
   <button
+    aria-label="Previous slide"
     disabled=""
   >
     ←
   </button>
-  <div
-    style="transform: translate3d(0px, 0, 0); transition: none; width: auto; height: auto;"
-  />
+  <div>
+    <div
+      style="transform: translate3d(0px, 0, 0); transition: none; width: auto;"
+    />
+  </div>
   <button
+    aria-label="Next slide"
     disabled=""
   >
     →
