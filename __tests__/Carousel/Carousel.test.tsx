@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Carousel } from '../../src/Carousel/Carousel';
 import * as styles from '../../src/Carousel/Carousel.css';
+import '@testing-library/jest-dom';
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
