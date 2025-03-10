@@ -4,10 +4,12 @@ interface GetTrackPositionParams {
   itemsToShow: number;
   itemsToMove: number;
   slideWidth: number;
+  slideHeight?: number;
   itemsToRenderCount: number;
   circular: boolean;
   animationOffset: number;
   isRTL: boolean;
+  isVertical?: boolean;
 }
 
 /**
@@ -27,11 +29,21 @@ export const getTrackPosition = ({
   itemsToShow,
   itemsToMove,
   slideWidth,
+  slideHeight = 0,
   itemsToRenderCount,
   circular,
   animationOffset,
   isRTL,
+  isVertical = false,
 }: GetTrackPositionParams): number => {
+  // Use the appropriate slide size based on orientation
+  const slideSize = isVertical ? slideHeight : slideWidth;
+
+  // Ensure we have valid values
+  if (!slideSize || slideSize <= 0) {
+    return 0;
+  }
+
   let baseOffset = 0;
 
   if (!circular) {
@@ -40,15 +52,23 @@ export const getTrackPosition = ({
       baseOffset = 0;
     } else if (currentIndex >= totalItems - itemsToShow) {
       // At end - align to end
-      baseOffset = -slideWidth * (itemsToRenderCount - itemsToShow);
+      baseOffset = -slideSize * (itemsToRenderCount - itemsToShow);
     } else {
       // In middle - leave space for prev items
-      baseOffset = -slideWidth * itemsToMove;
+      baseOffset = -slideSize * itemsToMove;
     }
   } else {
     // Circular mode - always leave space for prev items
-    baseOffset = -slideWidth * itemsToMove;
+    baseOffset = -slideSize * itemsToMove;
   }
 
-  return isRTL ? -(baseOffset + animationOffset) : baseOffset + animationOffset;
+  // Add animation offset
+  const position = baseOffset + animationOffset;
+
+  // Handle RTL for horizontal mode only
+  if (!isVertical && isRTL) {
+    return -position;
+  }
+
+  return position;
 };
