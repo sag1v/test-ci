@@ -63,12 +63,7 @@ export const getTrackPosition = ({
   }
 
   // Add animation offset
-  const position = baseOffset + animationOffset;
-
-  // Handle RTL for horizontal mode only
-  if (!isVertical && isRTL) {
-    return -position;
-  }
+  const position = baseOffset * (isRTL ? -1 : 1) + animationOffset;
 
   return position;
 };

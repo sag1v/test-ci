@@ -381,38 +381,66 @@ export const Carousel: React.FC<CarouselProps> = ({
     return null;
   }
 
+  const PrevButton = (
+    <button
+      onClick={handlePrev}
+      className={styles.prevArrow}
+      disabled={
+        !infinite &&
+        (isRTL
+          ? state.currentIndex >= totalItems - itemsToShow
+          : state.currentIndex <= 0)
+      }
+      aria-label={verticalMode ? 'Previous slide (up)' : 'Previous slide'}
+    >
+      {verticalMode ? '↑' : '←'}
+    </button>
+  );
+
+  const NextButton = (
+    <button
+      onClick={handleNext}
+      className={styles.nextArrow}
+      disabled={
+        !infinite &&
+        (isRTL
+          ? state.currentIndex <= 0
+          : state.currentIndex >= totalItems - itemsToShow)
+      }
+      aria-label={verticalMode ? 'Next slide (down)' : 'Next slide'}
+    >
+      {verticalMode ? '↓' : '→'}
+    </button>
+  );
+
   return (
     <div
       ref={rootRef}
       className={styles.root}
-      dir={isRTL ? 'rtl' : 'ltr'}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={{
+        direction: isRTL ? 'rtl' : 'ltr',
         height: '100%', // Ensure root takes full height
       }}
     >
       {/* Previous button - always on the side */}
-      <button
-        onClick={handlePrev}
-        className={styles.prevArrow}
-        disabled={
-          !infinite &&
-          (isRTL
-            ? state.currentIndex >= totalItems - itemsToShow
-            : state.currentIndex <= 0)
-        }
-        aria-label={verticalMode ? 'Previous slide (up)' : 'Previous slide'}
-      >
-        {verticalMode ? '↑' : '←'}
-      </button>
+      {isRTL ? NextButton : PrevButton}
 
       {/* Frame container - wraps the track */}
-      <div className={styles.frame} ref={frameRef}>
+      <div
+        ref={frameRef}
+        className={styles.frame}
+        style={{
+          // we set the max width to the width of the itemsToShow because eitherwise we will see a portion of the next item
+          maxWidth: slideWidth > 0 ? `${slideWidth * itemsToShow}px` : '100%',
+        }}
+      >
         <div
           ref={trackRef}
           className={`${styles.track} ${verticalMode ? styles.trackVertical : ''}`}
           style={{
+            direction: isRTL ? 'rtl' : 'ltr',
             transform: verticalMode
               ? `translateY(${trackPosition}px)`
               : `translateX(${trackPosition}px)`,
@@ -450,19 +478,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       </div>
 
       {/* Next button - always on the side */}
-      <button
-        onClick={handleNext}
-        className={styles.nextArrow}
-        disabled={
-          !infinite &&
-          (isRTL
-            ? state.currentIndex <= 0
-            : state.currentIndex >= totalItems - itemsToShow)
-        }
-        aria-label={verticalMode ? 'Next slide (down)' : 'Next slide'}
-      >
-        {verticalMode ? '↓' : '→'}
-      </button>
+      {isRTL ? PrevButton : NextButton}
     </div>
   );
 };
