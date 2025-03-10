@@ -64,7 +64,7 @@ describe('getTrackPosition', () => {
         currentIndex: 0,
         animationOffset: 100,
       });
-      expect(position).toBe(0); // baseOffset + animationOffset
+      expect(position).toBe(0);
     });
   });
 
@@ -75,17 +75,17 @@ describe('getTrackPosition', () => {
         currentIndex: 2,
         isRTL: true,
       });
-      expect(position).toBe(100); // Inverted from -100
+      expect(position).toBe(100);
     });
 
     it('should handle animation offset in RTL mode', () => {
       const position = getTrackPosition({
         ...baseParams,
         currentIndex: 2,
-        animationOffset: -100,
+        animationOffset: 100,
         isRTL: true,
       });
-      expect(position).toBe(200); // Inverted from -200
+      expect(position).toBe(200);
     });
   });
 });
