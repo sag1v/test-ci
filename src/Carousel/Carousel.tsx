@@ -431,9 +431,14 @@ export const Carousel: React.FC<CarouselProps> = ({
                 : { flex: `1 0 ${100 / itemsToShow}%` } // Fallback to percentage-based height
               : { width: slideWidth > 0 ? `${slideWidth}px` : 'auto' };
 
+            // we use index as key to ensure that the slide is not recreated when the index changes
+            const key = `slide-${index}`;
+
             return (
               <div
-                key={`slide-${index}-${renderIndex}`}
+                data-renderindex={renderIndex}
+                data-key={key}
+                key={key}
                 className={`${styles.slide}`}
                 style={slideStyle}
               >
