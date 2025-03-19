@@ -52,7 +52,7 @@ export const Carousel: React.FC<CarouselProps> = ({
   const trackRef = useRef<HTMLDivElement>(null);
   const [slideWidth, setSlideWidth] = useState(0);
   const [slideHeight, setSlideHeight] = useState(0);
-  const [rootWidth, setRootWidth] = useState(0);
+  const [containerSize, setContainerSize] = useState(0);
   const [isRTL] = useState(defaultProps.isRTL || false);
 
   // Calculate these before hooks that depend on them
@@ -61,8 +61,8 @@ export const Carousel: React.FC<CarouselProps> = ({
   const allItems = React.Children.toArray(safeChildren);
 
   const activeProps = useMemo(
-    () => getResponsiveProps(defaultProps, responsive, rootWidth),
-    [defaultProps, responsive, rootWidth]
+    () => getResponsiveProps(defaultProps, responsive, containerSize),
+    [defaultProps, responsive, containerSize]
   );
 
   // Extract props with responsive values
@@ -223,8 +223,12 @@ export const Carousel: React.FC<CarouselProps> = ({
         frameRect = frameRef.current.getBoundingClientRect();
       }
 
-      // Update root width for responsive features
-      setRootWidth(rootRect.width);
+      // In vertical mode, track the root height instead of width for responsive features
+      if (verticalMode) {
+        setContainerSize(rootRect.height);
+      } else {
+        setContainerSize(rootRect.width);
+      }
 
       // For horizontal mode, calculate slide width based on frame width and itemsToShow
       if (!verticalMode && frameRect.width > 0 && itemsToShow > 0) {
@@ -275,19 +279,31 @@ export const Carousel: React.FC<CarouselProps> = ({
     // Initial calculation
     calculateSizes();
 
-    // Set up ResizeObserver for width changes only
+    // Set up ResizeObserver for width/height changes based on mode
     const resizeObserver = new ResizeObserver((entries) => {
-      // Only recalculate if width changes, not height
       const rootEntry = entries.find(
         (entry) => entry.target === rootRef.current
       );
+      const frameEntry = entries.find(
+        (entry) => entry.target === frameRef.current
+      );
 
-      if (
-        rootEntry?.contentRect.width !== rootWidth ||
-        (entries.some((entry) => entry.target === frameRef.current) &&
-          !verticalMode)
-      ) {
-        calculateSizes(entries);
+      if (verticalMode) {
+        // In vertical mode, recalculate if height changes
+        if (
+          rootEntry?.contentRect.height !== containerSize ||
+          (frameEntry && frameEntry.contentRect.height > 0)
+        ) {
+          calculateSizes(entries);
+        }
+      } else {
+        // In horizontal mode, recalculate if width changes
+        if (
+          rootEntry?.contentRect.width !== containerSize ||
+          (frameEntry && frameEntry.contentRect.width > 0)
+        ) {
+          calculateSizes(entries);
+        }
       }
     });
 
@@ -298,7 +314,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [itemsToShow, verticalMode, rootWidth, itemsToRender.length]);
+  }, [itemsToShow, verticalMode, containerSize, itemsToRender.length]);
 
   // Handle transition end event
   const handleTransitionEnd = useCallback(() => {
