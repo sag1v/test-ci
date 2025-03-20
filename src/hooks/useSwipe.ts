@@ -92,6 +92,62 @@ export const useSwipe = ({
         e.preventDefault();
       }
 
+      if (!e.changedTouches || !e.changedTouches[0]) {
+        const deltaX = swipeState.currentX - swipeState.startX;
+        const deltaY = swipeState.currentY - swipeState.startY;
+
+        const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
+
+        const elementWidth = element.current?.clientWidth || threshold;
+        const elementHeight = element.current?.clientHeight || threshold;
+        const horizontalPercentage = Math.abs(deltaX) / elementWidth;
+        const verticalPercentage = Math.abs(deltaY) / elementHeight;
+
+        const hasSignificantMovement =
+          Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5;
+
+        let direction: 'left' | 'right' | 'up' | 'down' | null = null;
+        let percentage = 0;
+
+        if (isHorizontalSwipe) {
+          direction = deltaX > 0 ? 'right' : 'left';
+          percentage = horizontalPercentage;
+
+          if (deltaX > threshold && onSwipeRight) {
+            onSwipeRight();
+          } else if (deltaX < -threshold && onSwipeLeft) {
+            onSwipeLeft();
+          }
+        } else {
+          direction = deltaY > 0 ? 'down' : 'up';
+          percentage = verticalPercentage;
+
+          if (deltaY > threshold && onSwipeDown) {
+            onSwipeDown();
+          } else if (deltaY < -threshold && onSwipeUp) {
+            onSwipeUp();
+          }
+        }
+
+        if (hasSignificantMovement && onSwipeRelease) {
+          setTimeout(() => {
+            onSwipeRelease(percentage, direction);
+          }, 10);
+        }
+
+        setSwipeState((prev) => ({
+          ...prev,
+          isDragging: false,
+          startX: 0,
+          startY: 0,
+          currentX: 0,
+          currentY: 0,
+          dragDistanceX: 0,
+          dragDistanceY: 0,
+        }));
+        return;
+      }
+
       const deltaX = e.changedTouches[0].clientX - swipeState.startX;
       const deltaY = e.changedTouches[0].clientY - swipeState.startY;
 
