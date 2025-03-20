@@ -11,6 +11,7 @@ import { getTrackPosition } from '../utils/getTrackPosition';
 import { getResponsiveProps } from '../utils/getResponsiveProps';
 import { CarouselResponsiveProps } from '../types';
 import { useAutoPlay } from '../hooks/useAutoPlay';
+import { useSwipe } from '../hooks/useSwipe';
 
 export interface CarouselProps {
   children: React.ReactNode;
@@ -31,7 +32,7 @@ export interface CarouselProps {
 interface CarouselState {
   currentIndex: number;
   trackOffset: number;
-  isAnimating: boolean;
+  isAnimationAllowed: boolean;
   direction: 'next' | 'prev' | null;
 }
 
@@ -44,7 +45,7 @@ export const Carousel: React.FC<CarouselProps> = ({
   const [state, setState] = useState<CarouselState>({
     currentIndex: defaultProps.initialActiveIndex || 0,
     trackOffset: 0,
-    isAnimating: false,
+    isAnimationAllowed: false,
     direction: null,
   });
   const rootRef = useRef<HTMLDivElement>(null);
@@ -54,6 +55,10 @@ export const Carousel: React.FC<CarouselProps> = ({
   const [slideHeight, setSlideHeight] = useState(0);
   const [containerSize, setContainerSize] = useState(0);
   const [isRTL] = useState(defaultProps.isRTL || false);
+
+  // Add a cursor style variable to indicate when dragging is active
+  const [isDragModeActive, setIsDragModeActive] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
 
   // Calculate these before hooks that depend on them
   const safeChildren = children || [];
@@ -100,9 +105,9 @@ export const Carousel: React.FC<CarouselProps> = ({
     allItems,
   ]);
 
-  // Handle next button click
-  const handleNext = useCallback(() => {
-    if (state.isAnimating) {
+  // Handle basic next slide action without swipe logic
+  const handleNextBase = useCallback(() => {
+    if (state.isAnimationAllowed) {
       return;
     }
 
@@ -116,11 +121,11 @@ export const Carousel: React.FC<CarouselProps> = ({
     setState((prevState) => ({
       ...prevState,
       trackOffset: offset * itemsToMove,
-      isAnimating: true,
+      isAnimationAllowed: true,
       direction: 'next',
     }));
   }, [
-    state.isAnimating,
+    state.isAnimationAllowed,
     onNext,
     itemsToMove,
     slideWidth,
@@ -128,9 +133,9 @@ export const Carousel: React.FC<CarouselProps> = ({
     verticalMode,
   ]);
 
-  // Handle previous button click
-  const handlePrev = useCallback(() => {
-    if (state.isAnimating) {
+  // Handle basic prev slide action without swipe logic
+  const handlePrevBase = useCallback(() => {
+    if (state.isAnimationAllowed) {
       return;
     }
 
@@ -144,17 +149,26 @@ export const Carousel: React.FC<CarouselProps> = ({
     setState((prevState) => ({
       ...prevState,
       trackOffset: offset * itemsToMove,
-      isAnimating: true,
+      isAnimationAllowed: true,
       direction: 'prev',
     }));
   }, [
-    state.isAnimating,
+    state.isAnimationAllowed,
     onPrev,
     itemsToMove,
     slideWidth,
     slideHeight,
     verticalMode,
   ]);
+
+  // External-facing handlers (used by buttons)
+  const handleNext = useCallback(() => {
+    handleNextBase();
+  }, [handleNextBase]);
+
+  const handlePrev = useCallback(() => {
+    handlePrevBase();
+  }, [handlePrevBase]);
 
   // Initialize autoplay
   const { startAutoPlay, stopAutoPlay } = useAutoPlay(
@@ -175,6 +189,107 @@ export const Carousel: React.FC<CarouselProps> = ({
       startAutoPlay();
     }
   }, [enableAutoPlay, startAutoPlay]);
+
+  // Integrate swipe functionality with enhanced drag tracking
+  const {
+    isDragging: isUserDragging,
+    dragDistanceX,
+    dragDistanceY,
+  } = useSwipe({
+    element: frameRef,
+    threshold: 50,
+    mouseSupport: true,
+    onSwipeRelease: (percentage, direction) => {
+      // Simple threshold check - if we dragged more than 1/3 of the frame size
+      const threshold = 1 / 4;
+
+      // Check if we're at the edge in non-infinite mode
+      const isAtLeftEdge =
+        !infinite &&
+        (isRTL
+          ? state.currentIndex >= totalItems - itemsToShow
+          : state.currentIndex <= 0);
+      const isAtRightEdge =
+        !infinite &&
+        (isRTL
+          ? state.currentIndex <= 0
+          : state.currentIndex >= totalItems - itemsToShow);
+
+      // Determine swipe direction based on carousel mode
+      let nextSlide = false;
+      let prevSlide = false;
+
+      if (verticalMode) {
+        // In vertical mode: up -> next, down -> prev
+        nextSlide = direction === 'up';
+        prevSlide = direction === 'down';
+      } else if (isRTL) {
+        // In RTL mode: left -> prev, right -> next
+        nextSlide = direction === 'right';
+        prevSlide = direction === 'left';
+      } else {
+        // In LTR mode: left -> next, right -> prev
+        nextSlide = direction === 'left';
+        prevSlide = direction === 'right';
+      }
+
+      // Only prevent movement past the edge, allow movement away from edge
+      const isEdgeViolation =
+        (isAtLeftEdge && prevSlide) || // At left edge trying to go previous
+        (isAtRightEdge && nextSlide); // At right edge trying to go next
+
+      // If swiping past edge or threshold not reached, return to current position
+      if (isEdgeViolation || percentage < threshold) {
+        // Return to current position with animation
+        setState({
+          ...state,
+          trackOffset: 0,
+          isAnimationAllowed: true,
+          direction: null,
+        });
+      } else {
+        // Not edge violation and threshold reached - execute the appropriate action
+        if (nextSlide) {
+          handleNextBase();
+        } else if (prevSlide) {
+          handlePrevBase();
+        }
+      }
+
+      // Reset drag state to re-enable animations
+      setIsDragModeActive(false);
+      setDragOffset(0);
+    },
+  });
+
+  // Handle real-time dragging
+  useEffect(() => {
+    // When drag starts, disable transitions by setting isDragModeActive
+    if (isUserDragging && !isDragModeActive) {
+      setIsDragModeActive(true);
+      // Stop any ongoing animations
+      if (state.isAnimationAllowed) {
+        setState((prev) => ({
+          ...prev,
+          isAnimationAllowed: false,
+        }));
+      }
+    }
+
+    // If currently dragging, update position in real-time without animation
+    if (isUserDragging) {
+      const offset = verticalMode ? dragDistanceY : dragDistanceX;
+      setDragOffset(isRTL && !verticalMode ? -offset : offset);
+    }
+  }, [
+    isUserDragging,
+    isDragModeActive,
+    dragDistanceX,
+    dragDistanceY,
+    verticalMode,
+    isRTL,
+    state.isAnimationAllowed,
+  ]);
 
   // Effect for calculating sizes
   useEffect(() => {
@@ -318,10 +433,11 @@ export const Carousel: React.FC<CarouselProps> = ({
 
   // Handle transition end event
   const handleTransitionEnd = useCallback(() => {
-    if (!state.isAnimating) {
+    if (!state.isAnimationAllowed) {
       return;
     }
 
+    // Ensure we reset animation state correctly
     setState((prev) => {
       // Calculate the new index based on the direction of movement
       let newIndex = prev.currentIndex;
@@ -356,7 +472,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       return {
         currentIndex: newIndex,
         trackOffset: 0,
-        isAnimating: false,
+        isAnimationAllowed: false,
         direction: null,
       };
     });
@@ -367,7 +483,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     defaultProps,
     infinite,
     itemsToShow,
-    state.isAnimating,
+    state.isAnimationAllowed,
   ]);
 
   const trackPosition = getTrackPosition({
@@ -390,6 +506,23 @@ export const Carousel: React.FC<CarouselProps> = ({
       startAutoPlay();
     }
   }, [enableAutoPlay, startAutoPlay]);
+
+  // Calculate the effective track position with drag offset
+  const effectiveTrackPosition = isDragModeActive
+    ? trackPosition + dragOffset
+    : trackPosition;
+
+  // Apply animation class
+  useEffect(() => {
+    // Manually add animation class when isAnimationAllowed is true
+    if (trackRef.current) {
+      if (state.isAnimationAllowed) {
+        trackRef.current.classList.add(styles.trackAnimating);
+      } else {
+        trackRef.current.classList.remove(styles.trackAnimating);
+      }
+    }
+  }, [state.isAnimationAllowed]);
 
   // Now do the validation check after all hooks
   if (!children) {
@@ -446,7 +579,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       {/* Frame container - wraps the track */}
       <div
         ref={frameRef}
-        className={styles.frame}
+        className={`${styles.frame} ${isDragModeActive ? styles.dragging : ''}`}
         style={{
           // we set the max width to the width of the itemsToShow because eitherwise we will see a portion of the next item
           maxWidth: slideWidth > 0 ? `${slideWidth * itemsToShow}px` : '100%',
@@ -454,15 +587,14 @@ export const Carousel: React.FC<CarouselProps> = ({
       >
         <div
           ref={trackRef}
-          className={`${styles.track} ${verticalMode ? styles.trackVertical : ''}`}
+          className={`${styles.track} ${verticalMode ? styles.trackVertical : ''} 
+                    ${isDragModeActive ? styles.trackDragging : ''} 
+                    ${state.isAnimationAllowed ? styles.trackAnimating : ''}`}
           style={{
             direction: isRTL ? 'rtl' : 'ltr',
             transform: verticalMode
-              ? `translateY(${trackPosition}px)`
-              : `translateX(${trackPosition}px)`,
-            transition: state.isAnimating
-              ? 'transform 0.3s ease-in-out'
-              : 'none',
+              ? `translateY(${effectiveTrackPosition}px)`
+              : `translateX(${effectiveTrackPosition}px)`,
             width: '100%',
           }}
           onTransitionEnd={handleTransitionEnd}
