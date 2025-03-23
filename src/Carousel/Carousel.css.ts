@@ -17,6 +17,24 @@ export const frame = style({
   width: '100%',
   minHeight: '1px',
   display: 'flex',
+  cursor: 'grab', // Default grabbing cursor
+});
+
+export const dragging = style({
+  cursor: 'grabbing', // When actively dragging
+  userSelect: 'none', // Prevent text selection during drag
+});
+
+// Style that adds visual feedback when dragging
+export const trackDragging = style({
+  transition: 'none !important', // Ensure no transition during drag
+  // Add a subtle shadow effect to indicate drag
+  filter: 'drop-shadow(0 0 8px rgba(0, 100, 255, 0.3))',
+});
+
+// Style for animated track transitions
+export const trackAnimating = style({
+  transition: 'transform 0.4s ease-out !important', // Smooth, slightly faster than before
 });
 
 export const track = style({

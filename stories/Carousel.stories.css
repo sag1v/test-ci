@@ -42,3 +42,40 @@
 }
 
 /* Rest of custom styling for stories only */
+
+/* Swipe indicator styles */
+.swipe-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  font-size: 18px;
+  color: #333;
+  animation: pulse 2s infinite;
+}
+
+.swipe-indicator.vertical {
+  flex-direction: column;
+}
+
+.swipe-arrow {
+  margin: 0 10px;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.swipe-indicator.vertical .swipe-arrow {
+  margin: 10px 0;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}

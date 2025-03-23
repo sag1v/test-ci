@@ -330,3 +330,93 @@ export const ResponsiveCarouselVertical: Story = {
     },
   },
 };
+
+export const WithSwipeSupport: Story = {
+  name: 'Swipe Support',
+  args: {
+    children: Array(9)
+      .fill(0)
+      .map((_, i) => (
+        <Slide
+          key={`slide-${i}`}
+          color={`hsl(${(i * 360) / 5}, 70%, 70%)`}
+          title={`Slide ${i + 1}`}
+          details={
+            <>
+              <p>Swipe left or right</p>
+              <div className="swipe-indicator">
+                <span className="swipe-arrow">←</span>
+                <span>Next</span>
+                <span className="swipe-arrow" style={{ marginLeft: '20px' }}>
+                  →
+                </span>
+                <span>Previous</span>
+              </div>
+            </>
+          }
+        />
+      )),
+    itemsToShow: 3,
+    itemsToMove: 3,
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div style={{ marginBottom: '20px' }}>
+          <h3>Touch/Mouse Swipe Demo</h3>
+          <p>
+            This carousel supports touch swipe and mouse drag navigation. Try
+            clicking and dragging to navigate between slides.
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+};
+
+export const VerticalWithSwipeSupport: Story = {
+  name: 'Vertical Swipe Support',
+  args: {
+    children: Array(9)
+      .fill(0)
+      .map((_, i) => (
+        <Slide
+          key={`slide-${i}`}
+          color={`hsl(${(i * 360) / 5}, 70%, 70%)`}
+          title={`Slide ${i + 1}`}
+          details={
+            <>
+              <p>Swipe up or down</p>
+              <div className="swipe-indicator vertical">
+                <span className="swipe-arrow">↑</span>
+                <span>Next</span>
+                <span className="swipe-arrow" style={{ marginTop: '20px' }}>
+                  ↓
+                </span>
+                <span>Previous</span>
+              </div>
+            </>
+          }
+        />
+      )),
+    itemsToShow: 3,
+    itemsToMove: 3,
+    verticalMode: true,
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div style={{ marginBottom: '20px' }}>
+          <h3>Vertical Touch/Mouse Swipe Demo</h3>
+          <p>
+            This carousel supports vertical touch swipe and mouse drag
+            navigation. Try clicking and dragging up or down to navigate between
+            slides.
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+};
