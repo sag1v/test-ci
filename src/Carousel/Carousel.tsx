@@ -131,7 +131,11 @@ export const Carousel: React.FC<CarouselProps> = ({
 
     if (infinite) {
       // In infinite/circular mode, always move by a fixed amount
-      animationOffset = -slideSize * itemsToMove;
+      // In RTL mode, reverse the direction (next moves right instead of left)
+      animationOffset =
+        isRTL && !verticalMode
+          ? slideSize * itemsToMove
+          : -slideSize * itemsToMove;
       targetIndex = (state.currentIndex + itemsToMove) % totalItems;
     } else {
       // In non-infinite mode, calculate based on position difference
@@ -164,7 +168,15 @@ export const Carousel: React.FC<CarouselProps> = ({
       });
 
       // Animation offset is the difference
-      animationOffset = targetBaseOffset - currentBaseOffset;
+      // In RTL mode, since getTrackPosition negates the base position, we need to reverse the offset
+      // Final position = -(baseOffset + renderOffset) + animationOffset
+      // So if baseOffset changes from currentBaseOffset to targetBaseOffset:
+      // In LTR: animationOffset = targetBaseOffset - currentBaseOffset
+      // In RTL: animationOffset = -(targetBaseOffset - currentBaseOffset) = currentBaseOffset - targetBaseOffset
+      animationOffset =
+        isRTL && !verticalMode
+          ? currentBaseOffset - targetBaseOffset
+          : targetBaseOffset - currentBaseOffset;
     }
 
     // If no animation is needed (offset is 0 or already at target), update index immediately
@@ -227,6 +239,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     slideWidth,
     slideHeight,
     verticalMode,
+    isRTL,
     defaultProps,
   ]);
 
@@ -247,7 +260,11 @@ export const Carousel: React.FC<CarouselProps> = ({
 
     if (infinite) {
       // In infinite/circular mode, always move by a fixed amount
-      animationOffset = slideSize * itemsToMove;
+      // In RTL mode, reverse the direction (prev moves left instead of right)
+      animationOffset =
+        isRTL && !verticalMode
+          ? -slideSize * itemsToMove
+          : slideSize * itemsToMove;
       targetIndex =
         (state.currentIndex - (itemsToMove % totalItems) + totalItems) %
         totalItems;
@@ -279,7 +296,15 @@ export const Carousel: React.FC<CarouselProps> = ({
       });
 
       // Animation offset is the difference
-      animationOffset = targetBaseOffset - currentBaseOffset;
+      // In RTL mode, since getTrackPosition negates the base position, we need to reverse the offset
+      // Final position = -(baseOffset + renderOffset) + animationOffset
+      // So if baseOffset changes from currentBaseOffset to targetBaseOffset:
+      // In LTR: animationOffset = targetBaseOffset - currentBaseOffset
+      // In RTL: animationOffset = -(targetBaseOffset - currentBaseOffset) = currentBaseOffset - targetBaseOffset
+      animationOffset =
+        isRTL && !verticalMode
+          ? currentBaseOffset - targetBaseOffset
+          : targetBaseOffset - currentBaseOffset;
     }
 
     // If no animation is needed (offset is 0 or already at target), update index immediately
@@ -342,6 +367,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     slideWidth,
     slideHeight,
     verticalMode,
+    isRTL,
     defaultProps,
   ]);
 
@@ -741,14 +767,11 @@ export const Carousel: React.FC<CarouselProps> = ({
       onClick={handlePrev}
       className={styles.prevArrow}
       disabled={
-        !infinite &&
-        (isRTL
-          ? state.currentIndex >= totalItems - itemsToShow
-          : state.currentIndex <= 0)
+        !infinite && (isRTL ? state.currentIndex <= 0 : state.currentIndex <= 0)
       }
       aria-label={verticalMode ? 'Previous slide (up)' : 'Previous slide'}
     >
-      {verticalMode ? '↑' : '←'}
+      {verticalMode ? '↑' : isRTL && !verticalMode ? '→' : '←'}
     </button>
   );
 
@@ -759,12 +782,12 @@ export const Carousel: React.FC<CarouselProps> = ({
       disabled={
         !infinite &&
         (isRTL
-          ? state.currentIndex <= 0
+          ? state.currentIndex >= totalItems - itemsToShow
           : state.currentIndex >= totalItems - itemsToShow)
       }
       aria-label={verticalMode ? 'Next slide (down)' : 'Next slide'}
     >
-      {verticalMode ? '↓' : '→'}
+      {verticalMode ? '↓' : isRTL && !verticalMode ? '←' : '→'}
     </button>
   );
 
@@ -780,7 +803,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       }}
     >
       {/* Previous button - always on the side */}
-      {isRTL ? NextButton : PrevButton}
+      {PrevButton}
 
       {/* Frame container - wraps the track */}
       <div
@@ -840,7 +863,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       </div>
 
       {/* Next button - always on the side */}
-      {isRTL ? PrevButton : NextButton}
+      {NextButton}
     </div>
   );
 };
