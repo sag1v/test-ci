@@ -7,7 +7,10 @@ import React, {
 } from 'react';
 import * as styles from './Carousel.css';
 import { getItemsToRender } from '../utils/getItemsToRender';
-import { getTrackPosition } from '../utils/getTrackPosition';
+import {
+  getTrackPosition,
+  calculateBaseOffset,
+} from '../utils/getTrackPosition';
 import { getResponsiveProps } from '../utils/getResponsiveProps';
 import { CarouselResponsiveProps } from '../types';
 import { useAutoPlay } from '../hooks/useAutoPlay';
@@ -18,6 +21,7 @@ export interface CarouselProps {
   infinite?: boolean;
   itemsToShow?: number;
   itemsToMove?: number;
+  peekSize?: number;
   enableAutoPlay?: boolean;
   autoPlaySpeed?: number;
   initialActiveIndex?: number;
@@ -34,6 +38,7 @@ interface CarouselState {
   trackOffset: number;
   isAnimationAllowed: boolean;
   direction: 'next' | 'prev' | null;
+  targetIndex?: number; // The index we're animating to
 }
 
 export const Carousel: React.FC<CarouselProps> = ({
@@ -51,6 +56,7 @@ export const Carousel: React.FC<CarouselProps> = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [slideWidth, setSlideWidth] = useState(0);
   const [slideHeight, setSlideHeight] = useState(0);
   const [containerSize, setContainerSize] = useState(0);
@@ -75,6 +81,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     infinite = false,
     itemsToShow = 1,
     itemsToMove = 1,
+    peekSize = 0,
     enableAutoPlay = false,
     autoPlaySpeed = 3000,
     verticalMode = false,
@@ -90,6 +97,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       itemsToShow,
       itemsToMove,
       circular: infinite,
+      peekSize,
     });
 
     return itemsToRenderIndexes.map((index) => ({
@@ -103,6 +111,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     itemsToMove,
     infinite,
     allItems,
+    peekSize,
   ]);
 
   // Handle basic next slide action without swipe logic
@@ -115,22 +124,110 @@ export const Carousel: React.FC<CarouselProps> = ({
       onNext();
     }
 
-    // Set the track offset for smooth transition
-    const offset = verticalMode ? -slideHeight : -slideWidth;
+    // Calculate the animation offset
+    const slideSize = verticalMode ? slideHeight : slideWidth;
+    let animationOffset: number;
+    let targetIndex: number;
+
+    if (infinite) {
+      // In infinite/circular mode, always move by a fixed amount
+      animationOffset = -slideSize * itemsToMove;
+      targetIndex = (state.currentIndex + itemsToMove) % totalItems;
+    } else {
+      // In non-infinite mode, calculate based on position difference
+      // Current base offset (where we are now)
+      const currentBaseOffset = calculateBaseOffset({
+        index: state.currentIndex,
+        totalItems,
+        itemsToShow,
+        slideSize,
+        itemsToMove,
+        circular: false,
+        peekSize,
+      });
+
+      // Calculate target index
+      targetIndex = Math.min(
+        state.currentIndex + itemsToMove,
+        totalItems - itemsToShow
+      );
+
+      // Target base offset (where we want to be after animation)
+      const targetBaseOffset = calculateBaseOffset({
+        index: targetIndex,
+        totalItems,
+        itemsToShow,
+        slideSize,
+        itemsToMove,
+        circular: false,
+        peekSize,
+      });
+
+      // Animation offset is the difference
+      animationOffset = targetBaseOffset - currentBaseOffset;
+    }
+
+    // If no animation is needed (offset is 0 or already at target), update index immediately
+    if (Math.abs(animationOffset) < 1 || targetIndex === state.currentIndex) {
+      setState((prevState) => ({
+        ...prevState,
+        currentIndex: targetIndex,
+        trackOffset: 0,
+        isAnimationAllowed: false,
+        direction: null,
+      }));
+
+      // Call onChange callback
+      if (defaultProps.onChange && targetIndex !== state.currentIndex) {
+        defaultProps.onChange(targetIndex);
+      }
+      return;
+    }
 
     setState((prevState) => ({
       ...prevState,
-      trackOffset: offset * itemsToMove,
+      trackOffset: animationOffset,
       isAnimationAllowed: true,
       direction: 'next',
+      targetIndex,
     }));
+
+    // Clear any existing fallback timeout
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+    }
+
+    // Fallback timeout in case transitionend doesn't fire
+    fallbackTimeoutRef.current = setTimeout(() => {
+      fallbackTimeoutRef.current = null;
+      setState((prev) => {
+        // Only reset if animation is still marked as allowed
+        if (prev.isAnimationAllowed && prev.direction === 'next') {
+          return {
+            ...prev,
+            currentIndex: targetIndex,
+            trackOffset: 0,
+            isAnimationAllowed: false,
+            direction: null,
+            targetIndex: undefined,
+          };
+        }
+        return prev;
+      });
+    }, 600); // Slightly longer than animation duration (400ms)
   }, [
     state.isAnimationAllowed,
+    state.currentIndex,
     onNext,
     itemsToMove,
+    itemsToShow,
+    totalItems,
+    infinite,
+    peekSize,
     slideWidth,
     slideHeight,
     verticalMode,
+    defaultProps,
   ]);
 
   // Handle basic prev slide action without swipe logic
@@ -143,22 +240,109 @@ export const Carousel: React.FC<CarouselProps> = ({
       onPrev();
     }
 
-    // Set the track offset for smooth transition
-    const offset = verticalMode ? slideHeight : slideWidth;
+    // Calculate the animation offset
+    const slideSize = verticalMode ? slideHeight : slideWidth;
+    let animationOffset: number;
+    let targetIndex: number;
+
+    if (infinite) {
+      // In infinite/circular mode, always move by a fixed amount
+      animationOffset = slideSize * itemsToMove;
+      targetIndex =
+        (state.currentIndex - (itemsToMove % totalItems) + totalItems) %
+        totalItems;
+    } else {
+      // In non-infinite mode, calculate based on position difference
+      // Current base offset (where we are now)
+      const currentBaseOffset = calculateBaseOffset({
+        index: state.currentIndex,
+        totalItems,
+        itemsToShow,
+        slideSize,
+        itemsToMove,
+        circular: false,
+        peekSize,
+      });
+
+      // Calculate target index
+      targetIndex = Math.max(state.currentIndex - itemsToMove, 0);
+
+      // Target base offset (where we want to be after animation)
+      const targetBaseOffset = calculateBaseOffset({
+        index: targetIndex,
+        totalItems,
+        itemsToShow,
+        slideSize,
+        itemsToMove,
+        circular: false,
+        peekSize,
+      });
+
+      // Animation offset is the difference
+      animationOffset = targetBaseOffset - currentBaseOffset;
+    }
+
+    // If no animation is needed (offset is 0 or already at target), update index immediately
+    if (Math.abs(animationOffset) < 1 || targetIndex === state.currentIndex) {
+      setState((prevState) => ({
+        ...prevState,
+        currentIndex: targetIndex,
+        trackOffset: 0,
+        isAnimationAllowed: false,
+        direction: null,
+      }));
+
+      // Call onChange callback
+      if (defaultProps.onChange && targetIndex !== state.currentIndex) {
+        defaultProps.onChange(targetIndex);
+      }
+      return;
+    }
 
     setState((prevState) => ({
       ...prevState,
-      trackOffset: offset * itemsToMove,
+      trackOffset: animationOffset,
       isAnimationAllowed: true,
       direction: 'prev',
+      targetIndex,
     }));
+
+    // Clear any existing fallback timeout
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+    }
+
+    // Fallback timeout in case transitionend doesn't fire
+    fallbackTimeoutRef.current = setTimeout(() => {
+      fallbackTimeoutRef.current = null;
+      setState((prev) => {
+        // Only reset if animation is still marked as allowed
+        if (prev.isAnimationAllowed && prev.direction === 'prev') {
+          return {
+            ...prev,
+            currentIndex: targetIndex,
+            trackOffset: 0,
+            isAnimationAllowed: false,
+            direction: null,
+            targetIndex: undefined,
+          };
+        }
+        return prev;
+      });
+    }, 600); // Slightly longer than animation duration (400ms)
   }, [
     state.isAnimationAllowed,
+    state.currentIndex,
     onPrev,
     itemsToMove,
+    itemsToShow,
+    totalItems,
+    infinite,
+    peekSize,
     slideWidth,
     slideHeight,
     verticalMode,
+    defaultProps,
   ]);
 
   // External-facing handlers (used by buttons)
@@ -347,8 +531,20 @@ export const Carousel: React.FC<CarouselProps> = ({
 
       // For horizontal mode, calculate slide width based on frame width and itemsToShow
       if (!verticalMode && frameRect.width > 0 && itemsToShow > 0) {
-        const calculatedSlideWidth = Math.floor(frameRect.width / itemsToShow);
-        setSlideWidth(calculatedSlideWidth > 0 ? calculatedSlideWidth : 0);
+        // When peekSize is set, total visible = itemsToShow + peekSize
+        // (peekSize/2 on left + itemsToShow + peekSize/2 on right = itemsToShow + peekSize)
+        const effectiveItemsToShow =
+          peekSize > 0 ? itemsToShow + peekSize : itemsToShow;
+
+        // We need to floor the width to avoid fractional pixels
+        const newSlideWidth = Math.floor(
+          frameRect.width / effectiveItemsToShow
+        );
+
+        // Only update slide width if it has changed significantly to prevent loops
+        if (Math.abs(newSlideWidth - slideWidth) > 1) {
+          setSlideWidth(newSlideWidth > 0 ? newSlideWidth : 0);
+        }
       }
 
       // For vertical mode, measure the track to determine slide height
@@ -429,62 +625,60 @@ export const Carousel: React.FC<CarouselProps> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [itemsToShow, verticalMode, containerSize, itemsToRender.length]);
+  }, [
+    itemsToShow,
+    verticalMode,
+    containerSize,
+    itemsToRender.length,
+    peekSize,
+    slideWidth,
+  ]);
 
   // Handle transition end event
-  const handleTransitionEnd = useCallback(() => {
-    if (!state.isAnimationAllowed) {
-      return;
-    }
-
-    // Ensure we reset animation state correctly
-    setState((prev) => {
-      // Calculate the new index based on the direction of movement
-      let newIndex = prev.currentIndex;
-
-      if (prev.direction === 'next') {
-        newIndex = isRTL
-          ? Math.max(0, prev.currentIndex - itemsToMove)
-          : Math.min(totalItems - itemsToShow, prev.currentIndex + itemsToMove);
-
-        if (infinite) {
-          newIndex = isRTL
-            ? (prev.currentIndex - itemsToMove + totalItems) % totalItems
-            : (prev.currentIndex + itemsToMove) % totalItems;
-        }
-      } else if (prev.direction === 'prev') {
-        newIndex = isRTL
-          ? Math.min(totalItems - itemsToShow, prev.currentIndex + itemsToMove)
-          : Math.max(0, prev.currentIndex - itemsToMove);
-
-        if (infinite) {
-          newIndex = isRTL
-            ? (prev.currentIndex + itemsToMove) % totalItems
-            : (prev.currentIndex - itemsToMove + totalItems) % totalItems;
-        }
+  const handleTransitionEnd = useCallback(
+    (e?: React.TransitionEvent) => {
+      // Only handle transform transitions to avoid duplicate calls
+      // Note: propertyName might be undefined in some cases, so we allow that through
+      if (e && e.propertyName && e.propertyName !== 'transform') {
+        return;
       }
 
-      // Call onChange callback with the new index
-      if (defaultProps.onChange && newIndex !== prev.currentIndex) {
-        defaultProps.onChange(newIndex);
+      if (!state.isAnimationAllowed) {
+        return;
       }
 
-      return {
-        currentIndex: newIndex,
-        trackOffset: 0,
-        isAnimationAllowed: false,
-        direction: null,
-      };
-    });
-  }, [
-    itemsToMove,
-    totalItems,
-    isRTL,
-    defaultProps,
-    infinite,
-    itemsToShow,
-    state.isAnimationAllowed,
-  ]);
+      // Clear the fallback timeout since transitionend fired
+      if (fallbackTimeoutRef.current) {
+        clearTimeout(fallbackTimeoutRef.current);
+        fallbackTimeoutRef.current = null;
+      }
+
+      // Ensure we reset animation state correctly
+      setState((prev) => {
+        // Double-check animation is still allowed (prevent double-firing)
+        if (!prev.isAnimationAllowed) {
+          return prev;
+        }
+
+        // Use the targetIndex that was calculated when the animation started
+        const newIndex = prev.targetIndex ?? prev.currentIndex;
+
+        // Call onChange callback with the new index
+        if (defaultProps.onChange && newIndex !== prev.currentIndex) {
+          defaultProps.onChange(newIndex);
+        }
+
+        return {
+          currentIndex: newIndex,
+          trackOffset: 0,
+          isAnimationAllowed: false,
+          direction: null,
+          targetIndex: undefined,
+        };
+      });
+    },
+    [defaultProps, state.isAnimationAllowed]
+  );
 
   const trackPosition = getTrackPosition({
     currentIndex: state.currentIndex,
@@ -493,12 +687,24 @@ export const Carousel: React.FC<CarouselProps> = ({
     itemsToMove,
     slideWidth,
     slideHeight,
-    itemsToRenderCount: itemsToRender.length,
     circular: infinite,
     animationOffset: state.trackOffset,
     isRTL,
     isVertical: verticalMode,
+    peekSize,
   });
+
+  // Calculate frame width
+  // Frame shows: peekSize/2 on left + itemsToShow + peekSize/2 on right = itemsToShow + peekSize
+  const frameMaxWidth = useMemo(() => {
+    if (slideWidth <= 0) {
+      return '100%';
+    }
+
+    const frameWidthInSlides =
+      peekSize > 0 ? itemsToShow + peekSize : itemsToShow;
+    return `${slideWidth * frameWidthInSlides}px`;
+  }, [slideWidth, itemsToShow, peekSize]);
 
   // Initialize autoplay
   useEffect(() => {
@@ -581,8 +787,12 @@ export const Carousel: React.FC<CarouselProps> = ({
         ref={frameRef}
         className={`${styles.frame} ${isDragModeActive ? styles.dragging : ''}`}
         style={{
-          // we set the max width to the width of the itemsToShow because eitherwise we will see a portion of the next item
-          maxWidth: slideWidth > 0 ? `${slideWidth * itemsToShow}px` : '100%',
+          // Frame width adjusts based on edge position
+          // Edge slides (first/last): full + peek on one side
+          // Middle slides: peek on both sides
+          maxWidth: frameMaxWidth,
+          // Add will-change to improve performance
+          willChange: 'contents',
         }}
       >
         <div
@@ -596,6 +806,8 @@ export const Carousel: React.FC<CarouselProps> = ({
               ? `translateY(${effectiveTrackPosition}px)`
               : `translateX(${effectiveTrackPosition}px)`,
             width: '100%',
+            willChange: 'transform', // Optimize for transform changes
+            backfaceVisibility: 'hidden', // Prevent flickering
           }}
           onTransitionEnd={handleTransitionEnd}
         >
@@ -605,7 +817,9 @@ export const Carousel: React.FC<CarouselProps> = ({
               ? slideHeight > 0
                 ? { height: `${slideHeight}px` }
                 : { flex: `1 0 ${100 / itemsToShow}%` } // Fallback to percentage-based height
-              : { width: slideWidth > 0 ? `${slideWidth}px` : 'auto' };
+              : {
+                  width: slideWidth > 0 ? `${slideWidth}px` : 'auto',
+                };
 
             // we use index as key to ensure that the slide is not recreated when the index changes
             const key = `slide-${index}`;

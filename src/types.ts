@@ -27,6 +27,7 @@ export interface CarouselProps {
   enableTilt?: boolean;
   itemsToShow?: number;
   itemsToMove?: number;
+  peekSize?: number;
   breakPoints?: BreakPoint[];
   initialActiveIndex?: number;
   enableSwipe?: boolean;

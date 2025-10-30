@@ -420,3 +420,66 @@ export const VerticalWithSwipeSupport: Story = {
     ),
   ],
 };
+
+export const PeekedSlidesInfinite: Story = {
+  name: 'Peeked Slides (Infinite)',
+  args: {
+    infinite: true,
+    itemsToShow: 1,
+    peekSize: 0.5,
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🔄 Infinite mode with peekSize: 0.5</p>
+            <p>Shows 25% peek on BOTH sides (0.5/2 = 0.25)</p>
+            <p>All slides have equal peek left & right</p>
+          </>
+        }
+      />
+    )),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Infinite mode with peekSize. With peekSize=0.5 and itemsToShow=1, you see 0.25 (25%) of the previous slide on the left, the current slide in full, and 0.25 (25%) of the next slide on the right. The peek is always split evenly on both sides.',
+      },
+    },
+  },
+};
+
+export const PeekedSlidesNonInfinite: Story = {
+  name: 'Peeked Slides (Non-Infinite)',
+  args: {
+    infinite: false,
+    itemsToShow: 1,
+    peekSize: 0.5,
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>📍 Non-infinite mode with peekSize: 0.5</p>
+            <p>First slide: 50% peek RIGHT only</p>
+            <p>Middle slides: 25% peek on BOTH sides</p>
+            <p>Last slide: 50% peek LEFT only</p>
+          </>
+        }
+      />
+    )),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Non-infinite mode with peekSize. The first slide shows 0.5 peek only on the right (since there's no content on the left). Middle slides show 0.25 peek on both sides. The last slide shows 0.5 peek only on the left (since there's no content on the right).",
+      },
+    },
+  },
+};
