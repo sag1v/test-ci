@@ -732,13 +732,6 @@ export const Carousel: React.FC<CarouselProps> = ({
     return `${slideWidth * frameWidthInSlides}px`;
   }, [slideWidth, itemsToShow, peekSize]);
 
-  // Initialize autoplay
-  useEffect(() => {
-    if (enableAutoPlay) {
-      startAutoPlay();
-    }
-  }, [enableAutoPlay, startAutoPlay]);
-
   // Calculate the effective track position with drag offset
   const effectiveTrackPosition = isDragModeActive
     ? trackPosition + dragOffset
@@ -771,7 +764,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       }
       aria-label={verticalMode ? 'Previous slide (up)' : 'Previous slide'}
     >
-      {verticalMode ? '↑' : isRTL && !verticalMode ? '→' : '←'}
+      {verticalMode ? '▲' : isRTL && !verticalMode ? '▶' : '◀'}
     </button>
   );
 
@@ -787,7 +780,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       }
       aria-label={verticalMode ? 'Next slide (down)' : 'Next slide'}
     >
-      {verticalMode ? '↓' : isRTL && !verticalMode ? '←' : '→'}
+      {verticalMode ? '▼' : isRTL && !verticalMode ? '◀' : '▶'}
     </button>
   );
 
@@ -844,13 +837,15 @@ export const Carousel: React.FC<CarouselProps> = ({
                   width: slideWidth > 0 ? `${slideWidth}px` : 'auto',
                 };
 
-            // we use index as key to ensure that the slide is not recreated when the index changes
-            const key = `slide-${index}`;
+            // Use renderIndex as key to ensure uniqueness within this carousel's rendered items
+            // In infinite mode, the same content index can appear multiple times in the array,
+            // so we need to use renderIndex (position in array) instead of index (content index)
+            const key = `slide-${renderIndex}`;
 
             return (
               <div
                 data-renderindex={renderIndex}
-                data-key={key}
+                data-index={index}
                 key={key}
                 className={`${styles.slide}`}
                 style={slideStyle}

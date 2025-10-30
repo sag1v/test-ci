@@ -58,17 +58,63 @@ export const slide = style({
 
 const arrowBase = style({
   flexShrink: 0, // Prevent buttons from shrinking
-  padding: '8px 16px',
-  background: 'rgba(255, 255, 255, 0.8)',
+  padding: '0',
+  width: '48px',
+  height: '48px',
+  minWidth: '48px',
+  minHeight: '48px',
+  background: 'rgba(255, 255, 255, 0.95)',
   border: 'none',
-  borderRadius: '4px',
+  borderRadius: '50%',
   cursor: 'pointer',
-  boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
-  zIndex: 1,
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+  zIndex: 10,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '20px',
+  fontWeight: '600',
+  color: '#333',
+  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  userSelect: 'none',
+  WebkitTapHighlightColor: 'transparent',
+
+  ':hover': {
+    background: '#fff',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.1)',
+    transform: 'scale(1.1)',
+    color: '#000',
+  },
+
+  ':active': {
+    transform: 'scale(0.95)',
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+  },
 
   ':disabled': {
-    opacity: 0.5,
+    opacity: 0.35,
     cursor: 'not-allowed',
+    transform: 'none',
+    background: 'rgba(255, 255, 255, 0.5)',
+    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+
+    ':hover': {
+      transform: 'none',
+      boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+    },
+  },
+
+  '@media': {
+    '(max-width: 768px)': {
+      width: '40px',
+      height: '40px',
+      minWidth: '40px',
+      minHeight: '40px',
+      fontSize: '18px',
+    },
+    '(prefers-reduced-motion: reduce)': {
+      transition: 'none',
+    },
   },
 });
 
