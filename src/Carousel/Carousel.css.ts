@@ -37,6 +37,11 @@ export const trackAnimating = style({
   transition: 'transform 0.4s ease-out !important', // Smooth, slightly faster than before
 });
 
+// Style for faster snap animations (used in free snap mode and edge cases)
+export const trackSnapping = style({
+  transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important', // Faster snap animation
+});
+
 export const track = style({
   display: 'flex',
   position: 'relative',
@@ -97,8 +102,10 @@ const arrowBase = style({
     transform: 'none',
     background: 'rgba(255, 255, 255, 0.5)',
     boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
+  },
 
-    ':hover': {
+  selectors: {
+    '&:disabled:hover': {
       transform: 'none',
       boxShadow: '0 1px 4px rgba(0, 0, 0, 0.1)',
     },

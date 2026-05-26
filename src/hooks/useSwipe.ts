@@ -24,6 +24,13 @@ interface SwipeState {
   isMouseDown: boolean;
   currentX: number;
   currentY: number;
+  startTime: number;
+  lastMoveTime: number;
+  lastMoveX: number;
+  lastMoveY: number;
+  previousMoveTime: number;
+  previousMoveX: number;
+  previousMoveY: number;
 }
 
 export const useSwipe = ({
@@ -43,6 +50,13 @@ export const useSwipe = ({
     isMouseDown: false,
     currentX: 0,
     currentY: 0,
+    startTime: 0,
+    lastMoveTime: 0,
+    lastMoveX: 0,
+    lastMoveY: 0,
+    previousMoveTime: 0,
+    previousMoveX: 0,
+    previousMoveY: 0,
   });
 
   const [releaseDirection, setReleaseDirection] = useState<
@@ -57,6 +71,7 @@ export const useSwipe = ({
 
       const touchX = e.touches[0].clientX;
       const touchY = e.touches[0].clientY;
+      const now = Date.now();
 
       setSwipeState({
         startX: touchX,
@@ -64,6 +79,13 @@ export const useSwipe = ({
         isMouseDown: false,
         currentX: touchX,
         currentY: touchY,
+        startTime: now,
+        lastMoveTime: now,
+        lastMoveX: touchX,
+        lastMoveY: touchY,
+        previousMoveTime: now,
+        previousMoveX: touchX,
+        previousMoveY: touchY,
       });
 
       setReleaseDirection(null);
@@ -77,10 +99,17 @@ export const useSwipe = ({
         e.preventDefault();
       }
 
+      const now = Date.now();
       setSwipeState((prev) => ({
         ...prev,
         currentX: e.touches[0].clientX,
         currentY: e.touches[0].clientY,
+        previousMoveTime: prev.lastMoveTime,
+        previousMoveX: prev.lastMoveX,
+        previousMoveY: prev.lastMoveY,
+        lastMoveTime: now,
+        lastMoveX: e.touches[0].clientX,
+        lastMoveY: e.touches[0].clientY,
       }));
     },
     [preventDefault]
@@ -137,13 +166,11 @@ export const useSwipe = ({
 
         setSwipeState((prev) => ({
           ...prev,
-          isDragging: false,
+          isMouseDown: false,
           startX: 0,
           startY: 0,
           currentX: 0,
           currentY: 0,
-          dragDistanceX: 0,
-          dragDistanceY: 0,
         }));
         return;
       }
@@ -204,6 +231,8 @@ export const useSwipe = ({
     [
       swipeState.startX,
       swipeState.startY,
+      swipeState.currentX,
+      swipeState.currentY,
       onSwipeLeft,
       onSwipeRight,
       onSwipeUp,
@@ -216,12 +245,20 @@ export const useSwipe = ({
   );
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
+    const now = Date.now();
     setSwipeState({
       startX: e.clientX,
       startY: e.clientY,
       isMouseDown: true,
       currentX: e.clientX,
       currentY: e.clientY,
+      startTime: now,
+      lastMoveTime: now,
+      lastMoveX: e.clientX,
+      lastMoveY: e.clientY,
+      previousMoveTime: now,
+      previousMoveX: e.clientX,
+      previousMoveY: e.clientY,
     });
 
     setReleaseDirection(null);
@@ -237,10 +274,17 @@ export const useSwipe = ({
         e.preventDefault();
       }
 
+      const now = Date.now();
       setSwipeState((prev) => ({
         ...prev,
         currentX: e.clientX,
         currentY: e.clientY,
+        previousMoveTime: prev.lastMoveTime,
+        previousMoveX: prev.lastMoveX,
+        previousMoveY: prev.lastMoveY,
+        lastMoveTime: now,
+        lastMoveX: e.clientX,
+        lastMoveY: e.clientY,
       }));
     },
     [preventDefault, swipeState.isMouseDown]
@@ -300,13 +344,14 @@ export const useSwipe = ({
         }
       }
 
-      setSwipeState({
+      setSwipeState((prev) => ({
+        ...prev,
+        isMouseDown: false,
         startX: 0,
         startY: 0,
-        isMouseDown: false,
         currentX: 0,
         currentY: 0,
-      });
+      }));
     },
     [
       swipeState.startX,
@@ -362,7 +407,7 @@ export const useSwipe = ({
         isMouseDown: false,
       }));
     },
-    [swipeState, threshold, onSwipeRelease]
+    [swipeState, threshold, onSwipeRelease, element]
   );
 
   useEffect(() => {
@@ -415,6 +460,31 @@ export const useSwipe = ({
   const dragDistanceX = swipeState.currentX - swipeState.startX;
   const dragDistanceY = swipeState.currentY - swipeState.startY;
 
+  // Calculate velocity (pixels per millisecond) using last two movements
+  const getVelocity = useCallback(() => {
+    const timeDelta = swipeState.lastMoveTime - swipeState.previousMoveTime;
+    if (timeDelta > 0 && timeDelta < 100) {
+      // Calculate velocity from last two movements
+      const deltaX = swipeState.lastMoveX - swipeState.previousMoveX;
+      const deltaY = swipeState.lastMoveY - swipeState.previousMoveY;
+      return {
+        velocityX: deltaX / timeDelta,
+        velocityY: deltaY / timeDelta,
+      };
+    }
+    // Fallback: use total distance/time if movement too slow
+    const totalTime = Date.now() - swipeState.startTime;
+    if (totalTime > 0) {
+      const totalDistanceX = swipeState.currentX - swipeState.startX;
+      const totalDistanceY = swipeState.currentY - swipeState.startY;
+      return {
+        velocityX: totalDistanceX / totalTime,
+        velocityY: totalDistanceY / totalTime,
+      };
+    }
+    return { velocityX: 0, velocityY: 0 };
+  }, [swipeState]);
+
   return {
     isDragging: swipeState.isMouseDown,
     dragDistanceX,
@@ -422,5 +492,8 @@ export const useSwipe = ({
     dragPercentageX: dragDistanceX / (element.current?.clientWidth || 1),
     dragPercentageY: dragDistanceY / (element.current?.clientHeight || 1),
     releaseDirection,
+    getVelocity,
+    swipeStartTime: swipeState.startTime,
+    swipeLastMoveTime: swipeState.lastMoveTime,
   };
 };

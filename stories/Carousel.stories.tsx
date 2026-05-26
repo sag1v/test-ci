@@ -483,3 +483,336 @@ export const PeekedSlidesNonInfinite: Story = {
     },
   },
 };
+
+export const FreeMode: Story = {
+  name: 'Free Mode',
+  args: {
+    freeMode: true,
+    infinite: true,
+    itemsToShow: 3,
+    itemsToMove: 1,
+    children: Array.from({ length: 12 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🎯 Free Mode Enabled</p>
+            <p>Drag to any position - no snapping!</p>
+            <p>The carousel will stop exactly where you release</p>
+          </>
+        }
+      />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '15px',
+            backgroundColor: '#e8f5e9',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>Free Mode</h3>
+          <p>
+            In free mode, you can drag the carousel to any position and it will
+            stop exactly where you release it. Perfect for scenarios where you
+            want precise control over the scrolling position.
+          </p>
+          <p>
+            <strong>Try it:</strong> Click and drag the carousel - you can stop
+            at any position!
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Free mode allows continuous dragging without snapping to slides. The carousel stops exactly where you release it, giving you precise control over the position.',
+      },
+    },
+  },
+};
+
+export const FreeModeNonInfinite: Story = {
+  name: 'Free Mode (Non-Infinite)',
+  args: {
+    freeMode: true,
+    infinite: false,
+    itemsToShow: 3,
+    itemsToMove: 1,
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🎯 Free Mode (Non-Infinite)</p>
+            <p>Drag freely with boundary constraints</p>
+            <p>Movement is limited to the available slides</p>
+          </>
+        }
+      />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '15px',
+            backgroundColor: '#e8f5e9',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>Free Mode - Non-Infinite</h3>
+          <p>
+            Free mode with boundary constraints. You can drag freely, but
+            movement is limited to the available slides range.
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Free mode in non-infinite mode respects the boundaries of the carousel, preventing dragging beyond the first or last slide.',
+      },
+    },
+  },
+};
+
+export const FreeSnapMode: Story = {
+  name: 'Free Snap Mode',
+  args: {
+    freeSnapMode: true,
+    infinite: true,
+    itemsToShow: 3,
+    itemsToMove: 1,
+    children: Array.from({ length: 12 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🎯 Free Snap Mode</p>
+            <p>Drag freely, then snap to nearest slide</p>
+            <p>Best of both worlds!</p>
+          </>
+        }
+      />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '15px',
+            backgroundColor: '#fff3e0',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>Free Snap Mode</h3>
+          <p>
+            In free snap mode, you can drag the carousel freely to any position,
+            but when you release, it will smoothly snap to the nearest slide.
+            This combines the freedom of free mode with the precision of
+            snapping.
+          </p>
+          <p>
+            <strong>Try it:</strong> Drag the carousel and release - watch it
+            snap to the nearest slide!
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Free snap mode allows free dragging but automatically snaps to the nearest slide when released, providing smooth transitions and aligned positioning.',
+      },
+    },
+  },
+};
+
+export const FreeSnapModeNonInfinite: Story = {
+  name: 'Free Snap Mode (Non-Infinite)',
+  args: {
+    freeSnapMode: true,
+    infinite: false,
+    itemsToShow: 3,
+    itemsToMove: 1,
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🎯 Free Snap Mode (Non-Infinite)</p>
+            <p>Free drag with boundary snapping</p>
+            <p>Snaps to nearest valid slide</p>
+          </>
+        }
+      />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '15px',
+            backgroundColor: '#fff3e0',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>Free Snap Mode - Non-Infinite</h3>
+          <p>
+            Free snap mode with boundary constraints. Drag freely within the
+            available range, and it will snap to the nearest valid slide when
+            released.
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Free snap mode in non-infinite mode respects boundaries while still allowing free dragging and snapping to the nearest slide.',
+      },
+    },
+  },
+};
+
+export const FreeModeVertical: Story = {
+  name: 'Free Mode (Vertical)',
+  args: {
+    freeMode: true,
+    verticalMode: true,
+    infinite: true,
+    itemsToShow: 2,
+    itemsToMove: 1,
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🎯 Free Mode (Vertical)</p>
+            <p>Swipe up or down freely</p>
+            <p>Stop at any vertical position</p>
+          </>
+        }
+      />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '15px',
+            backgroundColor: '#e8f5e9',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>Free Mode - Vertical</h3>
+          <p>
+            Free mode works in vertical mode too! Drag vertically to any
+            position and release. The carousel will stay exactly where you
+            released it.
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Free mode in vertical orientation allows free vertical dragging without snapping to slides.',
+      },
+    },
+  },
+};
+
+export const FreeSnapModeVertical: Story = {
+  name: 'Free Snap Mode (Vertical)',
+  args: {
+    freeSnapMode: true,
+    verticalMode: true,
+    infinite: true,
+    itemsToShow: 2,
+    itemsToMove: 1,
+    children: Array.from({ length: 10 }, (_, i) => (
+      <Slide
+        key={i}
+        color={generateColor(i)}
+        title={`Slide ${i + 1}`}
+        details={
+          <>
+            <p>🎯 Free Snap Mode (Vertical)</p>
+            <p>Drag vertically, snap to nearest slide</p>
+            <p>Perfect for vertical browsing</p>
+          </>
+        }
+      />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div>
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '15px',
+            backgroundColor: '#fff3e0',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>Free Snap Mode - Vertical</h3>
+          <p>
+            Free snap mode works vertically too! Drag up or down freely, and
+            watch it snap to the nearest slide when you release.
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Free snap mode in vertical orientation allows free vertical dragging with automatic snapping to the nearest slide.',
+      },
+    },
+  },
+};

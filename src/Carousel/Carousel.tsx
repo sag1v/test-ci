@@ -31,6 +31,8 @@ export interface CarouselProps {
   isRTL?: boolean;
   responsive?: Record<number, CarouselResponsiveProps>;
   verticalMode?: boolean;
+  freeMode?: boolean;
+  freeSnapMode?: boolean;
 }
 
 interface CarouselState {
@@ -39,6 +41,8 @@ interface CarouselState {
   isAnimationAllowed: boolean;
   direction: 'next' | 'prev' | null;
   targetIndex?: number; // The index we're animating to
+  freeModeOffset?: number; // Offset for free mode (allows stopping at any position)
+  isSnapping?: boolean; // Whether we're in a snap animation (faster transition)
 }
 
 export const Carousel: React.FC<CarouselProps> = ({
@@ -52,6 +56,8 @@ export const Carousel: React.FC<CarouselProps> = ({
     trackOffset: 0,
     isAnimationAllowed: false,
     direction: null,
+    freeModeOffset: 0,
+    isSnapping: false,
   });
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
@@ -85,6 +91,8 @@ export const Carousel: React.FC<CarouselProps> = ({
     enableAutoPlay = false,
     autoPlaySpeed = 3000,
     verticalMode = false,
+    freeMode = false,
+    freeSnapMode = false,
   } = activeProps;
 
   // Extract callback props
@@ -187,6 +195,7 @@ export const Carousel: React.FC<CarouselProps> = ({
         trackOffset: 0,
         isAnimationAllowed: false,
         direction: null,
+        freeModeOffset: 0, // Reset free mode offset when using navigation buttons
       }));
 
       // Call onChange callback
@@ -202,6 +211,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       isAnimationAllowed: true,
       direction: 'next',
       targetIndex,
+      freeModeOffset: 0, // Reset free mode offset when using navigation buttons
     }));
 
     // Clear any existing fallback timeout
@@ -315,6 +325,7 @@ export const Carousel: React.FC<CarouselProps> = ({
         trackOffset: 0,
         isAnimationAllowed: false,
         direction: null,
+        freeModeOffset: 0, // Reset free mode offset when using navigation buttons
       }));
 
       // Call onChange callback
@@ -330,6 +341,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       isAnimationAllowed: true,
       direction: 'prev',
       targetIndex,
+      freeModeOffset: 0, // Reset free mode offset when using navigation buttons
     }));
 
     // Clear any existing fallback timeout
@@ -400,16 +412,533 @@ export const Carousel: React.FC<CarouselProps> = ({
     }
   }, [enableAutoPlay, startAutoPlay]);
 
+  // Helper function to apply rubberband effect when dragging past boundaries
+  const applyRubberband = useCallback(
+    (distance: number, currentOffset: number): number => {
+      if (infinite) {
+        return distance; // No rubberband in infinite mode
+      }
+
+      const slideSize = verticalMode ? slideHeight : slideWidth;
+      if (slideSize <= 0) {
+        return distance;
+      }
+
+      const basePosition = getTrackPosition({
+        currentIndex: state.currentIndex,
+        totalItems,
+        itemsToShow,
+        slideWidth,
+        slideHeight,
+        itemsToMove,
+        circular: infinite,
+        animationOffset: 0,
+        isRTL,
+        isVertical: verticalMode,
+        peekSize,
+      });
+
+      const minIndex = 0;
+      const maxIndex = totalItems - itemsToShow;
+
+      const minPosition = getTrackPosition({
+        currentIndex: minIndex,
+        totalItems,
+        itemsToShow,
+        slideWidth,
+        slideHeight,
+        itemsToMove,
+        circular: infinite,
+        animationOffset: 0,
+        isRTL,
+        isVertical: verticalMode,
+        peekSize,
+      });
+
+      const maxPosition = getTrackPosition({
+        currentIndex: maxIndex,
+        totalItems,
+        itemsToShow,
+        slideWidth,
+        slideHeight,
+        itemsToMove,
+        circular: infinite,
+        animationOffset: 0,
+        isRTL,
+        isVertical: verticalMode,
+        peekSize,
+      });
+
+      const currentPosition = basePosition + currentOffset;
+      const newPosition = currentPosition + distance;
+
+      // Check if we're going past boundaries
+      if (newPosition < minPosition) {
+        const overflow = (newPosition - minPosition) / slideSize;
+        const breakFactor = 2; // Rubberband tightness factor
+        const frameSize = verticalMode
+          ? frameRef.current?.clientHeight || window.innerHeight
+          : frameRef.current?.clientWidth || window.innerWidth;
+        const overflowedSize = Math.abs(overflow * slideSize);
+        const resistance = Math.max(
+          0,
+          1 - (overflowedSize / frameSize) * breakFactor
+        );
+        return distance * resistance * resistance; // Squared for tighter effect
+      }
+
+      if (newPosition > maxPosition) {
+        const overflow = (newPosition - maxPosition) / slideSize;
+        const breakFactor = 2; // Rubberband tightness factor
+        const frameSize = verticalMode
+          ? frameRef.current?.clientHeight || window.innerHeight
+          : frameRef.current?.clientWidth || window.innerWidth;
+        const overflowedSize = Math.abs(overflow * slideSize);
+        const resistance = Math.max(
+          0,
+          1 - (overflowedSize / frameSize) * breakFactor
+        );
+        return distance * resistance * resistance; // Squared for tighter effect
+      }
+
+      return distance;
+    },
+    [
+      infinite,
+      verticalMode,
+      slideHeight,
+      slideWidth,
+      state.currentIndex,
+      totalItems,
+      itemsToShow,
+      itemsToMove,
+      isRTL,
+      peekSize,
+    ]
+  );
+
+  // Helper function to calculate position bounds for free mode
+  const calculateFreeModeBounds = useCallback(
+    (currentOffset: number): { offset: number; isAtBoundary: boolean } => {
+      const slideSize = verticalMode ? slideHeight : slideWidth;
+      if (slideSize <= 0) {
+        return { offset: currentOffset, isAtBoundary: false };
+      }
+
+      if (!infinite) {
+        // Calculate bounds based on current index
+        const basePosition = getTrackPosition({
+          currentIndex: state.currentIndex,
+          totalItems,
+          itemsToShow,
+          slideWidth,
+          slideHeight,
+          itemsToMove,
+          circular: infinite,
+          animationOffset: 0,
+          isRTL,
+          isVertical: verticalMode,
+          peekSize,
+        });
+
+        // Calculate min and max positions
+        const minIndex = 0;
+        const maxIndex = totalItems - itemsToShow;
+
+        const minPosition = getTrackPosition({
+          currentIndex: minIndex,
+          totalItems,
+          itemsToShow,
+          slideWidth,
+          slideHeight,
+          itemsToMove,
+          circular: infinite,
+          animationOffset: 0,
+          isRTL,
+          isVertical: verticalMode,
+          peekSize,
+        });
+
+        const maxPosition = getTrackPosition({
+          currentIndex: maxIndex,
+          totalItems,
+          itemsToShow,
+          slideWidth,
+          slideHeight,
+          itemsToMove,
+          circular: infinite,
+          animationOffset: 0,
+          isRTL,
+          isVertical: verticalMode,
+          peekSize,
+        });
+
+        // Apply bounds
+        const currentPosition = basePosition + currentOffset;
+        const boundedPosition = Math.max(
+          maxPosition,
+          Math.min(minPosition, currentPosition)
+        );
+        const isAtBoundary = Math.abs(currentPosition - boundedPosition) > 0.1;
+        return { offset: boundedPosition - basePosition, isAtBoundary };
+      }
+
+      // In infinite mode, allow free movement
+      return { offset: currentOffset, isAtBoundary: false };
+    },
+    [
+      verticalMode,
+      slideHeight,
+      slideWidth,
+      infinite,
+      state.currentIndex,
+      totalItems,
+      itemsToShow,
+      itemsToMove,
+      isRTL,
+      peekSize,
+    ]
+  );
+
+  // Momentum animation ref
+  const momentumAnimationRef = useRef<number | null>(null);
+
+  // Momentum animation function
+  const startMomentumAnimation = useCallback(
+    (
+      initialVelocityX: number,
+      initialVelocityY: number,
+      initialOffset: number
+    ) => {
+      // Cancel any existing momentum animation
+      if (momentumAnimationRef.current !== null) {
+        cancelAnimationFrame(momentumAnimationRef.current);
+      }
+
+      const baseFriction = 0.95; // Normal deceleration factor (0.95 = 5% loss per frame)
+      const boundaryFriction = 0.88; // Tighter friction when at boundaries (0.88 = 12% loss per frame)
+      const snapFriction = 0.92; // Friction when snapping is needed (0.92 = 8% loss per frame)
+      const minVelocity = 0.01; // Minimum velocity to continue animation
+      let velocityX = initialVelocityX;
+      let velocityY = initialVelocityY;
+      let currentOffset = initialOffset;
+      let lastFrameTime = performance.now();
+
+      const animate = (currentTime: number) => {
+        const deltaTime = Math.min((currentTime - lastFrameTime) / 16.67, 2); // Cap at 2x normal frame time
+        lastFrameTime = currentTime;
+
+        // Apply velocity (convert from px/ms to px/frame)
+        const deltaX = velocityX * deltaTime * 16.67;
+        const deltaY = velocityY * deltaTime * 16.67;
+        const delta = verticalMode ? deltaY : deltaX;
+        const adjustedDelta = isRTL && !verticalMode ? -delta : delta;
+
+        // Apply rubberband effect for boundaries
+        const rubberbandDelta = applyRubberband(adjustedDelta, currentOffset);
+        currentOffset += rubberbandDelta;
+
+        // Apply bounds and check if we're at boundary
+        const { offset: boundedOffset, isAtBoundary } =
+          calculateFreeModeBounds(currentOffset);
+
+        // Determine friction based on context
+        let friction = baseFriction;
+        if (isAtBoundary) {
+          friction = boundaryFriction; // Tighter friction at boundaries
+        } else if (freeSnapMode) {
+          friction = snapFriction; // Tighter friction when snapping is needed
+        }
+
+        // If we hit a boundary hard, reduce velocity more aggressively
+        if (isAtBoundary && Math.abs(adjustedDelta) > 0.1) {
+          velocityX *= friction * 0.9; // Extra reduction
+          velocityY *= friction * 0.9;
+        }
+
+        currentOffset = boundedOffset;
+
+        // Apply friction (deceleration)
+        velocityX *= friction;
+        velocityY *= friction;
+
+        // Update state
+        setState((prev) => ({
+          ...prev,
+          freeModeOffset: currentOffset,
+          trackOffset: 0,
+          isAnimationAllowed: false,
+          direction: null,
+        }));
+
+        // Continue animation if velocity is significant
+        if (
+          Math.abs(velocityX) > minVelocity ||
+          Math.abs(velocityY) > minVelocity
+        ) {
+          momentumAnimationRef.current = requestAnimationFrame(animate);
+        } else {
+          // Animation complete
+          momentumAnimationRef.current = null;
+
+          if (freeSnapMode) {
+            // Snap to nearest slide
+            setState((prev) => {
+              const slideSize = verticalMode ? slideHeight : slideWidth;
+              const currentBasePosition = getTrackPosition({
+                currentIndex: prev.currentIndex,
+                totalItems,
+                itemsToShow,
+                slideWidth,
+                slideHeight,
+                itemsToMove,
+                circular: infinite,
+                animationOffset: 0,
+                isRTL,
+                isVertical: verticalMode,
+                peekSize,
+              });
+
+              const currentActualPosition = currentBasePosition + currentOffset;
+
+              let nearestIndex = prev.currentIndex;
+              if (slideSize > 0) {
+                const basePosition = getTrackPosition({
+                  currentIndex: 0,
+                  totalItems,
+                  itemsToShow,
+                  slideWidth,
+                  slideHeight,
+                  itemsToMove,
+                  circular: infinite,
+                  animationOffset: 0,
+                  isRTL,
+                  isVertical: verticalMode,
+                  peekSize,
+                });
+
+                const slidesFromStart =
+                  (currentActualPosition - basePosition) / slideSize;
+                const adjustedSlidesFromStart =
+                  isRTL && !verticalMode ? -slidesFromStart : slidesFromStart;
+
+                nearestIndex = Math.round(adjustedSlidesFromStart);
+
+                if (!infinite) {
+                  nearestIndex = Math.max(
+                    0,
+                    Math.min(nearestIndex, totalItems - itemsToShow)
+                  );
+                } else {
+                  nearestIndex =
+                    ((nearestIndex % totalItems) + totalItems) % totalItems;
+                }
+              }
+
+              const targetPosition = getTrackPosition({
+                currentIndex: nearestIndex,
+                totalItems,
+                itemsToShow,
+                slideWidth,
+                slideHeight,
+                itemsToMove,
+                circular: infinite,
+                animationOffset: 0,
+                isRTL,
+                isVertical: verticalMode,
+                peekSize,
+              });
+
+              const animationOffset = targetPosition - currentBasePosition;
+
+              if (defaultProps.onChange && nearestIndex !== prev.currentIndex) {
+                defaultProps.onChange(nearestIndex);
+              }
+
+              return {
+                ...prev,
+                currentIndex: nearestIndex,
+                freeModeOffset: 0,
+                trackOffset: animationOffset,
+                isAnimationAllowed: true,
+                direction: nearestIndex > prev.currentIndex ? 'next' : 'prev',
+                targetIndex: nearestIndex,
+                isSnapping: true, // Mark as snapping for faster animation
+              };
+            });
+          }
+        }
+      };
+
+      momentumAnimationRef.current = requestAnimationFrame(animate);
+    },
+    [
+      verticalMode,
+      isRTL,
+      calculateFreeModeBounds,
+      applyRubberband,
+      freeSnapMode,
+      infinite,
+      totalItems,
+      itemsToShow,
+      itemsToMove,
+      slideWidth,
+      slideHeight,
+      peekSize,
+      defaultProps,
+    ]
+  );
+
+  // Cleanup momentum animation on unmount
+  useEffect(() => {
+    return () => {
+      if (momentumAnimationRef.current !== null) {
+        cancelAnimationFrame(momentumAnimationRef.current);
+      }
+    };
+  }, []);
+
   // Integrate swipe functionality with enhanced drag tracking
   const {
     isDragging: isUserDragging,
     dragDistanceX,
     dragDistanceY,
+    getVelocity,
   } = useSwipe({
     element: frameRef,
     threshold: 50,
     mouseSupport: true,
     onSwipeRelease: (percentage, direction) => {
+      // Handle free mode and free snap mode
+      if (freeMode || freeSnapMode) {
+        const currentDragOffset = verticalMode ? dragDistanceY : dragDistanceX;
+        const adjustedDragOffset =
+          isRTL && !verticalMode ? -currentDragOffset : currentDragOffset;
+
+        // Get velocity for momentum
+        const velocity = getVelocity();
+        const velocityX = velocity.velocityX;
+        const velocityY = velocity.velocityY;
+
+        // Calculate final position including current drag
+        const finalOffset = (state.freeModeOffset || 0) + adjustedDragOffset;
+
+        // Only start momentum if velocity is significant
+        const minVelocityThreshold = 0.1; // pixels per millisecond
+        const hasSignificantVelocity =
+          Math.abs(velocityX) > minVelocityThreshold ||
+          Math.abs(velocityY) > minVelocityThreshold;
+
+        if (hasSignificantVelocity) {
+          // Start momentum animation with current offset
+          startMomentumAnimation(velocityX, velocityY, finalOffset);
+        } else {
+          // No significant velocity - just apply final position
+          const { offset: boundedOffset } =
+            calculateFreeModeBounds(finalOffset);
+
+          if (freeMode) {
+            // Free mode: keep the current position
+            setState({
+              ...state,
+              freeModeOffset: boundedOffset,
+              trackOffset: 0,
+              isAnimationAllowed: false,
+              direction: null,
+            });
+          } else if (freeSnapMode) {
+            // Free snap mode: snap to nearest slide immediately with faster animation
+            const slideSize = verticalMode ? slideHeight : slideWidth;
+            const currentBasePosition = getTrackPosition({
+              currentIndex: state.currentIndex,
+              totalItems,
+              itemsToShow,
+              slideWidth,
+              slideHeight,
+              itemsToMove,
+              circular: infinite,
+              animationOffset: 0,
+              isRTL,
+              isVertical: verticalMode,
+              peekSize,
+            });
+
+            const currentActualPosition = currentBasePosition + boundedOffset;
+            let nearestIndex = state.currentIndex;
+
+            if (slideSize > 0) {
+              const basePosition = getTrackPosition({
+                currentIndex: 0,
+                totalItems,
+                itemsToShow,
+                slideWidth,
+                slideHeight,
+                itemsToMove,
+                circular: infinite,
+                animationOffset: 0,
+                isRTL,
+                isVertical: verticalMode,
+                peekSize,
+              });
+
+              const slidesFromStart =
+                (currentActualPosition - basePosition) / slideSize;
+              const adjustedSlidesFromStart =
+                isRTL && !verticalMode ? -slidesFromStart : slidesFromStart;
+
+              nearestIndex = Math.round(adjustedSlidesFromStart);
+
+              if (!infinite) {
+                nearestIndex = Math.max(
+                  0,
+                  Math.min(nearestIndex, totalItems - itemsToShow)
+                );
+              } else {
+                nearestIndex =
+                  ((nearestIndex % totalItems) + totalItems) % totalItems;
+              }
+            }
+
+            const targetPosition = getTrackPosition({
+              currentIndex: nearestIndex,
+              totalItems,
+              itemsToShow,
+              slideWidth,
+              slideHeight,
+              itemsToMove,
+              circular: infinite,
+              animationOffset: 0,
+              isRTL,
+              isVertical: verticalMode,
+              peekSize,
+            });
+
+            const animationOffset = targetPosition - currentBasePosition;
+
+            setState({
+              ...state,
+              currentIndex: nearestIndex,
+              freeModeOffset: 0,
+              trackOffset: animationOffset,
+              isAnimationAllowed: true,
+              direction: nearestIndex > state.currentIndex ? 'next' : 'prev',
+              targetIndex: nearestIndex,
+              isSnapping: true, // Mark as snapping for faster animation
+            });
+
+            if (defaultProps.onChange && nearestIndex !== state.currentIndex) {
+              defaultProps.onChange(nearestIndex);
+            }
+          }
+        }
+
+        // Reset drag state
+        setIsDragModeActive(false);
+        setDragOffset(0);
+        return;
+      }
+
+      // Original snap-to-slide behavior (default mode)
       // Simple threshold check - if we dragged more than 1/3 of the frame size
       const threshold = 1 / 4;
 
@@ -472,7 +1001,7 @@ export const Carousel: React.FC<CarouselProps> = ({
     },
   });
 
-  // Handle real-time dragging
+  // Handle real-time dragging with rubberband effect
   useEffect(() => {
     // When drag starts, disable transitions by setting isDragModeActive
     if (isUserDragging && !isDragModeActive) {
@@ -482,12 +1011,30 @@ export const Carousel: React.FC<CarouselProps> = ({
         setState((prev) => ({
           ...prev,
           isAnimationAllowed: false,
+          isSnapping: false,
         }));
+      }
+      // Cancel momentum animation if running
+      if (momentumAnimationRef.current !== null) {
+        cancelAnimationFrame(momentumAnimationRef.current);
+        momentumAnimationRef.current = null;
       }
     }
 
     // If currently dragging, update position in real-time without animation
-    if (isUserDragging) {
+    if (isUserDragging && (freeMode || freeSnapMode)) {
+      const offset = verticalMode ? dragDistanceY : dragDistanceX;
+      const adjustedOffset = isRTL && !verticalMode ? -offset : offset;
+
+      // Apply rubberband effect during dragging (apply to the delta, not total)
+      const rubberbandDelta = applyRubberband(
+        adjustedOffset,
+        state.freeModeOffset || 0
+      );
+
+      // Use the rubberband-adjusted delta
+      setDragOffset(rubberbandDelta);
+    } else if (isUserDragging) {
       const offset = verticalMode ? dragDistanceY : dragDistanceX;
       setDragOffset(isRTL && !verticalMode ? -offset : offset);
     }
@@ -499,6 +1046,11 @@ export const Carousel: React.FC<CarouselProps> = ({
     verticalMode,
     isRTL,
     state.isAnimationAllowed,
+    state.freeModeOffset,
+    freeMode,
+    freeSnapMode,
+    applyRubberband,
+    calculateFreeModeBounds,
   ]);
 
   // Effect for calculating sizes
@@ -700,6 +1252,8 @@ export const Carousel: React.FC<CarouselProps> = ({
           isAnimationAllowed: false,
           direction: null,
           targetIndex: undefined,
+          freeModeOffset: 0, // Reset free mode offset after animation completes
+          isSnapping: false, // Reset snapping flag
         };
       });
     },
@@ -732,22 +1286,60 @@ export const Carousel: React.FC<CarouselProps> = ({
     return `${slideWidth * frameWidthInSlides}px`;
   }, [slideWidth, itemsToShow, peekSize]);
 
-  // Calculate the effective track position with drag offset
-  const effectiveTrackPosition = isDragModeActive
-    ? trackPosition + dragOffset
-    : trackPosition;
+  // Calculate the effective track position with drag offset and free mode offset
+  const effectiveTrackPosition = useMemo(() => {
+    let position = trackPosition;
+
+    // Add free mode offset if active (when not dragging, not animating)
+    if (
+      (freeMode || freeSnapMode) &&
+      !state.isAnimationAllowed &&
+      !isDragModeActive
+    ) {
+      position += state.freeModeOffset || 0;
+    }
+
+    // Add current drag offset during dragging
+    // In free mode, add to base position + freeModeOffset
+    if (isDragModeActive) {
+      if (freeMode || freeSnapMode) {
+        // In free mode, drag offset is relative to the current free mode position
+        position += (state.freeModeOffset || 0) + dragOffset;
+      } else {
+        // In normal mode, drag offset is relative to the base position
+        position += dragOffset;
+      }
+    }
+
+    return position;
+  }, [
+    trackPosition,
+    freeMode,
+    freeSnapMode,
+    state.isAnimationAllowed,
+    state.freeModeOffset,
+    isDragModeActive,
+    dragOffset,
+  ]);
 
   // Apply animation class
   useEffect(() => {
     // Manually add animation class when isAnimationAllowed is true
     if (trackRef.current) {
       if (state.isAnimationAllowed) {
-        trackRef.current.classList.add(styles.trackAnimating);
+        if (state.isSnapping) {
+          trackRef.current.classList.add(styles.trackSnapping);
+          trackRef.current.classList.remove(styles.trackAnimating);
+        } else {
+          trackRef.current.classList.add(styles.trackAnimating);
+          trackRef.current.classList.remove(styles.trackSnapping);
+        }
       } else {
         trackRef.current.classList.remove(styles.trackAnimating);
+        trackRef.current.classList.remove(styles.trackSnapping);
       }
     }
-  }, [state.isAnimationAllowed]);
+  }, [state.isAnimationAllowed, state.isSnapping]);
 
   // Now do the validation check after all hooks
   if (!children) {

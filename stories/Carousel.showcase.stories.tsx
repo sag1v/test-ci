@@ -301,3 +301,112 @@ export const StreamingHomepageLayout: ShowcaseStory = {
     },
   },
 };
+
+export const FreeModeStreamingCarousel: ShowcaseStory = {
+  name: 'Free Mode Movie Browser',
+  args: {
+    freeMode: true,
+    infinite: true,
+    itemsToShow: 5,
+    itemsToMove: 2,
+    children: streamingContent.map((item, i) => (
+      <MovieSlide key={i} {...item} />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          backgroundColor: '#141414',
+          padding: '60px 40px',
+          borderRadius: '8px',
+          minHeight: '450px',
+        }}
+      >
+        <div
+          style={{
+            marginBottom: '30px',
+            padding: '20px',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(76, 175, 80, 0.3)',
+          }}
+        >
+          <h3
+            style={{ color: '#4caf50', marginBottom: '10px', fontSize: '18px' }}
+          >
+            🎯 Free Mode Enabled
+          </h3>
+          <p style={{ color: '#fff', margin: 0 }}>
+            Drag the carousel to any position - it will stop exactly where you
+            release it. Perfect for precise browsing control!
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A movie streaming carousel with free mode enabled. Drag freely to any position without snapping to slides - perfect for precise content browsing.',
+      },
+    },
+  },
+};
+
+export const FreeSnapModeStreamingCarousel: ShowcaseStory = {
+  name: 'Free Snap Mode Movie Browser',
+  args: {
+    freeSnapMode: true,
+    infinite: true,
+    itemsToShow: 5,
+    itemsToMove: 2,
+    children: streamingContent.map((item, i) => (
+      <MovieSlide key={i} {...item} />
+    )),
+  },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          backgroundColor: '#141414',
+          padding: '60px 40px',
+          borderRadius: '8px',
+          minHeight: '450px',
+        }}
+      >
+        <div
+          style={{
+            marginBottom: '30px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 152, 0, 0.3)',
+          }}
+        >
+          <h3
+            style={{ color: '#ff9800', marginBottom: '10px', fontSize: '18px' }}
+          >
+            🎯 Free Snap Mode Enabled
+          </h3>
+          <p style={{ color: '#fff', margin: 0 }}>
+            Drag freely to any position, then watch it smoothly snap to the
+            nearest slide when you release. Best of both worlds - freedom and
+            precision!
+          </p>
+        </div>
+        <Story />
+      </div>
+    ),
+  ],
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'A movie streaming carousel with free snap mode enabled. Drag freely to explore content, then smoothly snap to the nearest slide for perfect alignment.',
+      },
+    },
+  },
+};

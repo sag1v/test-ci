@@ -34,6 +34,8 @@ export interface CarouselProps {
   enableMouseSwipe?: boolean;
   enableAutoPlay?: boolean;
   autoPlaySpeed?: number;
+  freeMode?: boolean;
+  freeSnapMode?: boolean;
   renderArrow?: (type: 'prev' | 'next', onClick: () => void) => JSX.Element;
   renderPagination?: (
     pages: number,
